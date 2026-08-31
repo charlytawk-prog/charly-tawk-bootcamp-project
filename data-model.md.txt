@@ -1,0 +1,39 @@
+# Data Model: Internal Operations Service Hub
+
+## 1. Domain
+* **Important Entities:** 
+  * `User`: Represents employees, department agents, system administrators, and department managers.
+  * `Ticket`: The core operational request item generated from intake templates.
+  * `DepartmentQueue`: The organizational routing target (e.g., HR, Finance, IT).
+  * `Comment / Response`: The communication logs/messages attached to a ticket between users, agents, and departments.
+  * `Attachment`: Supporting files associated with a request or response.
+* **Roles & Permissions:**
+  * **Employee:** Can submit requests and view only their own personal request history.
+  * **Department Agent:** Can view, process, and update tickets assigned to their specific department queue.
+  * **System Admin:** Has full global access to oversee all tickets, cross-department communications, user roles, and system configurations.
+* **Relationships & Cardinality:** 
+  * One `User` can submit many `Tickets` (1:N).
+  * One `DepartmentQueue` manages many `Tickets` (1:N).
+  * One `Ticket` can contain many `Comments / Responses` (1:N).
+  * One `Ticket` can contain many file `Attachments` (1:N).
+* **Data Ownership:** Employees own their submitted requests; department agents own the state transitions within their assigned queues; System Admins hold overarching audit and management access.
+
+## 2. Lifecycle + Rules
+* **State Transitions:** Tickets move through a controlled lifecycle: `Submitted` --->`Pending Review` --->`Routed` ---> `In Progress` ---> `Resolved`.
+* **Invariants:** Every ticket must reference a valid existing user ID and target a valid department queue. Priority tags (`Low`, `Medium`, `Urgent`) must be validated upon intake.
+* **Authorization-Sensitive Rules (RBAC):** 
+  * Regular employees are restricted to their own requests.
+  * Agents are restricted to their assigned department queue.
+  * System Admins possess global clearance to read and audit all system state transitions, inter-departmental handoffs, and messaging logs.
+
+## 3. Storage
+* **Relational / Document Reasoning:** Relational table structures are chosen for `Users`, `Tickets`, `DepartmentQueues`, and `Comments` to enforce strict foreign key constraints, maintain transactional integrity across state changes, and preserve chronological messaging threads.
+* **Durable vs. Derived Data:** Core properties like user identity, ticket creation timestamps, message history, and final status are permanently durable in storage, whereas queue sort order based on priority is dynamically evaluated.
+
+## 4. Access
+* **Important Queries & Access Patterns:** 
+  * *Agent Dashboard Query:* Fetch all tickets matching an agent's specific department queue, ordered by priority and recency.
+  * *Employee History Query:* Fetch all tickets where `user_id` matches the authenticated session user (`user_id == current_user_id`).
+  * *Admin Global Audit Query:* Fetch all system tickets, department routing paths, and communication threads across all departments for monitoring and escalation.
+* **Authorization & Filtering Rules:** Regular employees are strictly restricted to querying and viewing only their own submitted requests and corresponding responses. They are unauthorized to view requests or communication logs belonging to other employees.
+* **Indexes:** Indexes are applied to `department_id`, `status`, `user_id`, and `priority` to ensure fast retrieval, secure scoping, and filtering on high-volume queues.
