@@ -1,0 +1,46 @@
+# Problem / Context
+Employees across different departments lack a unified system to request and track internal services (such as IT equipment, HR documents, or Finance approvals). Requests are currently lost in scattered channels like direct messages and emails, resulting in zero visibility, missing information, lost tickets, and ambiguity regarding which department currently holds or is processing a request.
+
+# Actors / Stakeholders
+- **Employee:** Selects standardized request templates, fills out mandatory structured fields, assigns priority levels, tracks clear process states across departments, and downloads completed deliverables.
+- **Department Agent (IT, HR, Finance):** Triages, reviews clean structured data presentations, updates ticket states, and manages incoming requests within their specific department queue.
+- **System Admin:** Manages user roles, permissions, security access control, and overall system configuration.
+
+# Known Facts
+- The system must handle service requests across at least three core internal departments: IT, HR, and Finance.
+- The output of this phase is strictly a specification draft in a single Markdown file (`product-spec.md`). No implementation, code, or databases are built yet.
+
+# Functional Requirements
+- **Standardized Request Workflows & Forms:** 
+  - The system must use strictly pre-configured form templates for frequent internal requests (e.g., *IT Equipment Replacement*, *Employment Verification Letter*, *Attendance/Leave Adjustment*) rather than open text blocks.
+  - Each template must enforce mandatory structured fields (e.g., calendar date pickers, asset tags, specific category selections) to guarantee that zero data is missing upfront and eliminate back-and-forth emails.
+- **Structured Data Presentation:** 
+  - Because submissions rely on strict standardized fields, the system must present the incoming data to department agents in a clean, organized key-value layout for rapid review.
+- **Priority & Expectation Management:** 
+  - Employees must be able to assign a priority level (*Low*, *Medium*, *High*, *Urgent*) to highlight critical operational needs.
+  - The system must display an expected resolution timeline (SLA) upon submission so the employee knows when to expect a response.
+- **Department State Transparency & Routing:**
+  - The system must support sequential or cross-departmental handoffs (e.g., a request moving from HR to Finance).
+  - The employee dashboard must display a clear status indicator showing the exact active department currently processing the request (e.g., *Current Department: HR* or *Current Department: Finance*) alongside a chronological audit log of state changes.
+- **Ticket Management:**
+  - Department agents must be able to update ticket statuses (e.g., *Submitted*, *In Progress*, *Resolved*, *Closed*) and append comment notes to a request thread.
+
+# Non-Functional Requirements
+- **Security & Access Control:** Role-Based Access Control (RBAC) must ensure that standard employees can only view and modify their own requests, while department agents can view queues assigned to their respective department.
+- **System Resilience & Graceful Degradation:** If the system encounters a backend failure or database timeout (such as an HTTP 500 error), it must catch the exception and display a user-friendly error message rather than crashing or displaying an infinite loading loop.
+
+# Assumptions / Constraints / Unknowns
+- **Assumption:** All employees have access to a device with a modern web browser to view the hub dashboard.
+- **Constraint:** The final deliverable must be restricted entirely to a single file named `product-spec.md`.
+- **Unknown:** How does the system handle notifications if a request is bounced back between two independent departments (e.g., from Finance back to HR)?
+
+# Non-Goals (Deliberately Out of Scope)
+- No automated mathematical engines or third-party accounting/payroll calculation scripts.
+- No automated AI chatbot routing, auto-categorization features, or third-party integrations (like Slack, Jira, or external APIs).
+- No implementation of frontend code, backend server logic, database tables, or Git repository setups during this phase.
+
+# Acceptance Criteria
+- **Scenario 1 (Happy Path - Standardized Form & State Transparency):** 
+  An authenticated employee selects the *Employment Verification Letter* template, fills out all mandatory structured fields without missing data, and assigns a *Medium* priority $\rightarrow$ The structured ticket is created and lands in the HR queue with an estimated SLA $\rightarrow$ HR reviews the clean structured layout, processes the document, and digitally routes it to Finance for approval $\rightarrow$ The employee views their dashboard, seeing the clear state indicator update from *Current Department: HR* to *Current Department: Finance* until it resolves successfully.
+- **Scenario 2 (Sad Path - Security & Failure Cases):** 
+  A standard employee attempts to tamper with a URL ID to view another private employee's compensation request $\rightarrow$ The system's Role-Based Access Control (RBAC) intercepts the violation and triggers a clean error page (*"403 Unauthorized"*). Concurrently, if a database timeout occurs mid-submission, the application catches the exception, preserves user input, and displays: *"Unable to process request at this time. Please try again later."*
