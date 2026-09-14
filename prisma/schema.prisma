@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      String   @id
+  name    String
+  email   String
+  role    String
+  tickets Ticket[]
+}
+
+model DepartmentQueue {
+  id          String   @id
+  name        String
+  description String?
+  tickets     Ticket[]
+}
+
+model Ticket {
+  id          String          @id
+  title       String
+  description String
+  status      String
+  priority    String
+  createdAt   DateTime
+  userId      String
+  queueId     String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  queue       DepartmentQueue @relation(fields: [queueId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([queueId])
+  @@index([status])
+  @@index([priority])
+}
