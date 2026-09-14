@@ -18,8 +18,9 @@ This is a bounded backend slice, not the full product. It covers:
 - Moving a ticket through its first three lifecycle states, in order: `Submitted` → `Pending Review` → `Routed`
 - Rejecting any attempt to skip a state, move backward, or use an unrecognized status — with a clear error, never a crash
 
-Deliberately not included this week: authentication, authorization, a 
-frontend, and the later lifecycle states (`In Progress`, `Resolved`). Data 
+Deliberately not included this week: authentication and the later lifecycle 
+states (`In Progress`, `Resolved`). The frontend uses the existing lightweight
+`x-user-id` identity header rather than real authentication. Data 
 is persisted in SQLite through Prisma and initialized by `prisma/seed.ts`.
 
 ## 3. What do I need installed?
@@ -51,6 +52,31 @@ npm install
 npm run dev
 \`\`\`
 Server starts on http://localhost:5000 (or the PORT set in .env).
+
+### Run the frontend
+The React/Vite frontend lives in the sibling `frontend/` folder so the backend
+package and API remain unchanged. Start the backend first, then open a second
+terminal:
+\`\`\`
+cd frontend
+npm install
+npm run dev
+\`\`\`
+Open http://localhost:5173. The Vite development server proxies `/api` calls
+to the backend at http://localhost:5000.
+
+To exercise the one frontend flow manually:
+1. In **Submit a ticket**, enter a title and description. Keep `user-1`,
+  `queue-1`, and a priority, then create the ticket. The returned ticket ID
+  and `Submitted` status are shown below the form.
+2. In **View a ticket by ID**, try `ticket-1` with `user-1` for the allowed
+  case. The full ticket details should appear.
+3. Keep `ticket-1` but change the user ID to `user-2` for the denied case. The
+  UI shows the backend's 403 message and `HTTP 403`.
+4. Clear the user ID for the missing-identity case. The UI shows the backend's
+  401 message and `HTTP 401`.
+5. Use a made-up ticket ID with `user-1`. The UI shows `Ticket not found` and
+  `HTTP 404`, visually distinct from the denied case.
 
 ### Verify: 2 valid transitions
 
