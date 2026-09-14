@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { TicketOwnerGuard } from './ticket-owner.guard';
 import { TicketsService } from './tickets.service';
 
 @Controller('api/tickets')
@@ -8,6 +9,12 @@ export class TicketsController {
 	@Get()
 	getAllTickets() {
 		return this.ticketsService.getAllTickets();
+	}
+
+	@Get(':id')
+	@UseGuards(TicketOwnerGuard)
+	getTicket(@Param('id') id: string) {
+		return this.ticketsService.getTicketById(id);
 	}
 
 	@Post()

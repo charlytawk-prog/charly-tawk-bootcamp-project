@@ -11,6 +11,16 @@ export class TicketsService {
 		return this.prisma.ticket.findMany();
 	}
 
+	getTicketById(id: string) {
+		return this.prisma.ticket.findUnique({ where: { id } }).then((ticket) => {
+			if (!ticket) {
+				throw new NotFoundException({ error: 'Ticket not found' });
+			}
+
+			return ticket;
+		});
+	}
+
 	async createTicket(body: CreateTicketBody) {
 		if (!(await this.prisma.user.findUnique({ where: { id: body.userId ?? '' } }))) {
 			throw new BadRequestException({ error: 'Invalid userId: no such user exists' });
