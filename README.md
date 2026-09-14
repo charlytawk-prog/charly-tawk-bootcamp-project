@@ -1,4 +1,3 @@
-# charly-tawk-bootcamp-project
 # Internal Operations Service Hub
 A small, working backend for the AI Academy 2026 bootcamp — Week 2.
 
@@ -19,10 +18,9 @@ This is a bounded backend slice, not the full product. It covers:
 - Moving a ticket through its first three lifecycle states, in order: `Submitted` → `Pending Review` → `Routed`
 - Rejecting any attempt to skip a state, move backward, or use an unrecognized status — with a clear error, never a crash
 
-Deliberately not included this week: authentication, a real database, a 
-frontend, and the later lifecycle states (`In Progress`, `Resolved`). All 
-data is dummy JSON, seeded in the `data/` folder — that's intentional for 
-this phase, not a shortcut.
+Deliberately not included this week: authentication, authorization, a 
+frontend, and the later lifecycle states (`In Progress`, `Resolved`). Data 
+is persisted in SQLite through Prisma and initialized by `prisma/seed.ts`.
 
 ## 3. What do I need installed?
 | Tool | Version | Check with |
@@ -31,7 +29,7 @@ this phase, not a shortcut.
 | npm | comes with Node.js | `npm -v` |
 | Git | any recent version | `git --version` |
 
-Nothing else. No database, no Docker, no accounts.
+No external database, Docker, or accounts are required.
 
 ## 4. How do I get the project?
 \`\`\`
@@ -46,11 +44,10 @@ From the root of the project, once:
 npm install
 \`\`\`
 
-## Week 2: Run & Verify
+## 6. Week 2: Run & Verify
 
 ### Run the server
 \`\`\`
-npm install
 npm run dev
 \`\`\`
 Server starts on http://localhost:5000 (or the PORT set in .env).
@@ -107,7 +104,7 @@ curl -X POST http://localhost:5000/api/tickets \
 \`\`\`
 Expected: `400`, `{"error": "Invalid userId: no such user exists"}`
 
-## 6. Which folders should I look at first?
+## 7. Which folders should I look at first?
 \`\`\`
 charly-tawk-bootcamp-project/
 ├── README.md                       <- you are here
@@ -116,21 +113,23 @@ charly-tawk-bootcamp-project/
 ├── architecture.md.excalidraw      <- Week 1: system diagram
 ├── docs/
 │   └── week2-agentic-workflow.md   <- Week 2: how this was built and verified
-├── data/                           <- dummy JSON data (tickets, users, queues)
+├── prisma/
+│   ├── schema.prisma                <- SQLite schema and relations
+│   └── seed.ts                      <- starting users, queues, and tickets
 └── src/
-    ├── controllers/ticketController.js   <- the lifecycle + invariant logic
-    ├── routes/ticketRoutes.js            <- ticket API endpoints
-    ├── middleware/errorHandler.js        <- graceful error handling
-    └── server.js                         <- application entry point
+  ├── tickets/                     <- ticket controller, service, module
+  ├── users/                       <- user controller, service, module
+  ├── queues/                      <- queue controller, service, module
+  └── prisma/                      <- Prisma client provider
 \`\`\`
-Start with `src/controllers/ticketController.js` — that's where the actual behaviour lives.
+Start with `src/tickets/tickets.service.ts` — that's where the lifecycle and invariant behavior lives.
 
-## 7. What should I ignore for now?
+## 8. What should I ignore for now?
 - `node_modules/` — downloaded packages, never edited by hand
 - `package-lock.json` — an exact record of those downloads
 - `.env` — local configuration (port number)
 
-## 8. How do I stop the app?
+## 9. How do I stop the app?
 Click into the terminal running it and press `Ctrl + C`.
 
 ## If something goes wrong
