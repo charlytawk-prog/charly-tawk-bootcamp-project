@@ -1,164 +1,156 @@
 # Internal Operations Service Hub
-A small, working backend for the AI Academy 2026 bootcamp — Week 2.
 
-## 1. What is this project?
-The Internal Operations Service Hub is a ticketing system that lets employees 
-submit internal service requests (IT, HR, Finance) and tracks each request 
-through a controlled lifecycle as it moves between departments, instead of 
-being lost in scattered emails and DMs.
+The Internal Operations Service Hub is a ticketing system that lets employees submit internal service requests (IT, HR, Finance) and tracks each request through a controlled lifecycle as it moves between departments, instead of being lost in scattered emails and DMs.
 
-This repository contains the Week 1 design work (product spec, data model, 
-architecture diagram) and the Week 2 implementation: a small, working slice 
-of the ticket lifecycle — creating tickets and moving them through their 
-first states, with clear rules about what's allowed and what isn't.
+This repository contains the Week 1 design work and the Week 3 full-stack delivery: a React/Vite interface for submitting a ticket and viewing a ticket by ID, a NestJS API, Prisma/SQLite persistence, relational reference validation, and an ownership check based on the `x-user-id` header. The backend also retains the first three lifecycle states: `Submitted` -> `Pending Review` -> `Routed`.
 
-## 2. What does this implementation actually do?
-This is a bounded backend slice, not the full product. It covers:
-- Creating a ticket, with validation that it belongs to a real user and a real department queue
-- Moving a ticket through its first three lifecycle states, in order: `Submitted` → `Pending Review` → `Routed`
-- Rejecting any attempt to skip a state, move backward, or use an unrecognized status — with a clear error, never a crash
+## What this implementation does
 
-Deliberately not included this week: authentication and the later lifecycle 
-states (`In Progress`, `Resolved`). The frontend uses the existing lightweight
-`x-user-id` identity header rather than real authentication. Data 
-is persisted in SQLite through Prisma and initialized by `prisma/seed.ts`.
+- Submit a ticket with a title, description, priority, user ID, and queue ID.
+- Reject a ticket when its `userId` or `queueId` does not exist.
+- View a ticket by ID only when the supplied `x-user-id` matches the ticket owner.
+- Move tickets through `Submitted`, `Pending Review`, and `Routed` in order.
+- Persist data in SQLite through Prisma.
 
-## 3. What do I need installed?
-| Tool | Version | Check with |
+Authentication, external integrations, runtime AI, CI/CD, deployment, monitoring, production infrastructure, and the later lifecycle states `In Progress` and `Resolved` are out of scope. The `x-user-id` header is unverified identity input, not authentication.
+
+## Prerequisites
+
+Install:
+
+| Tool | Required version | Check |
 |---|---|---|
-| Node.js | 18+ (LTS) | `node -v` |
-| npm | comes with Node.js | `npm -v` |
-| Git | any recent version | `git --version` |
+| Node.js | 18 or newer | `node --version` |
+| npm | Included with Node.js | `npm --version` |
+| Git | Any recent version | `git --version` |
 
-No external database, Docker, or accounts are required.
+No external database, Docker, or account is required.
 
-## 4. How do I get the project?
-\`\`\`
+## Install
+
+From a fresh clone, run these commands from the repository root:
+
+```sh
 git clone https://github.com/charlytawk-prog/charly-tawk-bootcamp-project.git
 cd charly-tawk-bootcamp-project
-\`\`\`
-Open the folder in your code editor (VS Code, Cursor — either is fine).
-
-## 5. How do I install the dependencies?
-From the root of the project, once:
-\`\`\`
 npm install
-\`\`\`
+npx prisma migrate deploy
+npm run prisma:seed
+```
 
-## 6. Week 2: Run & Verify
+Install the frontend dependencies in a second shell, or after the root commands finish:
 
-### Run the server
-\`\`\`
-npm run dev
-\`\`\`
-Server starts on http://localhost:5000 (or the PORT set in .env).
-
-### Run the frontend
-The React/Vite frontend lives in the sibling `frontend/` folder so the backend
-package and API remain unchanged. Start the backend first, then open a second
-terminal:
-\`\`\`
+```sh
 cd frontend
 npm install
+cd ..
+```
+
+`npx prisma migrate deploy` applies the committed migration in `prisma/migrations/`. `npm run prisma:seed` creates the demo users, queues, and `ticket-1`. The local SQLite connection is configured in `.env` as `file:./dev.db`.
+
+## Run
+
+Start the backend from the repository root:
+
+```sh
 npm run dev
-\`\`\`
-Open http://localhost:5173. The Vite development server proxies `/api` calls
-to the backend at http://localhost:5000.
+```
 
-To exercise the one frontend flow manually:
-1. In **Submit a ticket**, enter a title and description. Keep `user-1`,
-  `queue-1`, and a priority, then create the ticket. The returned ticket ID
-  and `Submitted` status are shown below the form.
-2. In **View a ticket by ID**, try `ticket-1` with `user-1` for the allowed
-  case. The full ticket details should appear.
-3. Keep `ticket-1` but change the user ID to `user-2` for the denied case. The
-  UI shows the backend's 403 message and `HTTP 403`.
-4. Clear the user ID for the missing-identity case. The UI shows the backend's
-  401 message and `HTTP 401`.
-5. Use a made-up ticket ID with `user-1`. The UI shows `Ticket not found` and
-  `HTTP 404`, visually distinct from the denied case.
+The NestJS API listens on `http://localhost:5000` by default. The port comes from `PORT=5000` in `.env`.
 
-### Verify: 2 valid transitions
+In a second shell, start the frontend:
 
-**1. Submitted → Pending Review**
-\`\`\`
-curl -X PUT http://localhost:5000/api/tickets/ticket-1 \
-  -H "Content-Type: application/json" \
-  -d '{"status": "Pending Review"}'
-\`\`\`
-Expected: `200`, ticket-1 now has `"status": "Pending Review"`.
+```sh
+cd frontend
+npm run dev
+```
 
-**2. Pending Review → Routed**
-\`\`\`
-curl -X PUT http://localhost:5000/api/tickets/ticket-1 \
-  -H "Content-Type: application/json" \
-  -d '{"status": "Routed"}'
-\`\`\`
-Expected: `200`, ticket-1 now has `"status": "Routed"`.
+Open `http://localhost:5173`. Vite is configured to proxy `/api` requests to `http://localhost:5000`.
 
-### Verify: 2 invalid transitions
+## Exercise the flow
 
-**3. Skipping a state (Submitted → Routed directly)**
-\`\`\`
-curl -X POST http://localhost:5000/api/tickets \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test skip","description":"test","userId":"user-1","queueId":"queue-1"}'
-\`\`\`
-(Note the new ticket's id from the response, e.g. `ticket-172...`, then:)
-\`\`\`
-curl -X PUT http://localhost:5000/api/tickets/<new-ticket-id> \
-  -H "Content-Type: application/json" \
-  -d '{"status": "Routed"}'
-\`\`\`
-Expected: `400`, `{"error": "Invalid transition: cannot move from 'Submitted' to 'Routed' directly"}`
+1. Open `http://localhost:5173`.
+2. In **Submit a ticket**, enter any title and description. Keep **Acting as user ID** as `user-1`, keep **Queue ID** as `queue-1`, and choose a priority.
+3. Select **Create ticket**. The UI shows the returned ticket ID and its initial `Submitted` status. The backend returns `201` for this request.
+4. In **View a ticket by ID**, type the seeded ticket ID `ticket-1` and user ID `user-1`, then select **View ticket**. This is the allowed case: `ticket-1` belongs to seeded user `user-1`, so the UI displays the ticket and the API returns `200`.
+5. Keep `ticket-1`, change **Your user ID** to `user-2`, and select **View ticket** again. This is the denied case: `user-2` is a real seeded user but is not the owner, so the UI displays the backend error and `HTTP 403`.
 
-**4. Moving backward (Routed → Submitted)**
-\`\`\`
-curl -X PUT http://localhost:5000/api/tickets/ticket-1 \
-  -H "Content-Type: application/json" \
-  -d '{"status": "Submitted"}'
-\`\`\`
-Expected: `400`, `{"error": "Invalid transition: cannot move from 'Routed' to 'Submitted' directly"}`
+The seed data also includes user `user-3` and queue `queue-2`. To reset the known demo records after experimenting, run `npm run prisma:seed` again from the repository root.
 
-### Verify: invariant enforcement
+## Tests
 
-**5. Creating a ticket with a nonexistent userId**
-\`\`\`
-curl -X POST http://localhost:5000/api/tickets \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Bad user","description":"test","userId":"user-999","queueId":"queue-1"}'
-\`\`\`
-Expected: `400`, `{"error": "Invalid userId: no such user exists"}`
+From the repository root:
 
-## 7. Which folders should I look at first?
-\`\`\`
+```sh
+npm test
+```
+
+Expected passing output includes:
+
+```text
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+```
+
+The suite covers lifecycle transition rules, real SQLite persistence and foreign-key reference validation, HTTP ownership authorization, and lifecycle regression behavior.
+
+## Project structure
+
+```text
 charly-tawk-bootcamp-project/
-├── README.md                       <- you are here
-├── product-spec.md                 <- Week 1: what we're building and why
-├── data-model.md                   <- Week 1: entities, lifecycle, rules
-├── architecture.md.excalidraw      <- Week 1: system diagram
+├── README.md
+├── architecture.md.excalidraw
+├── data-model.md.txt
+├── product-spec.md.txt
+├── package.json
+├── jest.config.js
+├── nest-cli.json
+├── tsconfig.json
+├── tsconfig.build.json
+├── data/
 ├── docs/
-│   └── week2-agentic-workflow.md   <- Week 2: how this was built and verified
+│   ├── week2-agentic-workflow.md
+│   └── week3-full-stack-delivery.md
+├── frontend/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── main.jsx
+│       └── styles.css
+├── postman/
 ├── prisma/
-│   ├── schema.prisma                <- SQLite schema and relations
-│   └── seed.ts                      <- starting users, queues, and tickets
-└── src/
-  ├── tickets/                     <- ticket controller, service, module
-  ├── users/                       <- user controller, service, module
-  ├── queues/                      <- queue controller, service, module
-  └── prisma/                      <- Prisma client provider
-\`\`\`
-Start with `src/tickets/tickets.service.ts` — that's where the lifecycle and invariant behavior lives.
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
+│       ├── migration_lock.toml
+│       └── 20260914110330_init/
+│           └── migration.sql
+├── src/
+│   ├── app.controller.ts
+│   ├── app.module.ts
+│   ├── main.ts
+│   ├── controllers/
+│   ├── middleware/
+│   ├── prisma/
+│   ├── queues/
+│   ├── routes/
+│   ├── tickets/
+│   └── users/
+└── test/
+    ├── test-database.ts
+    └── tickets.spec.ts
+```
 
-## 8. What should I ignore for now?
-- `node_modules/` — downloaded packages, never edited by hand
-- `package-lock.json` — an exact record of those downloads
-- `.env` — local configuration (port number)
+The main ticket flow is in `src/tickets/`; the Prisma client provider is in `src/prisma/`; and the browser flow is in `frontend/src/main.jsx`.
 
-## 9. How do I stop the app?
-Click into the terminal running it and press `Ctrl + C`.
+## Troubleshooting
 
-## If something goes wrong
-- **`npm run dev` says a port is already in use.** Something else is using port 5000. Stop it, or change `PORT` in `.env`.
-- **A request returns nothing / connection refused.** The server probably isn't running — check the terminal for `Server is running on http://localhost:5000`. If it's not there, restart with `npm run dev`.
-- **`node -v` shows a version older than 18.** Install the current LTS from https://nodejs.org and retry.
+- **Port 5000 is already in use:** Stop the process using port 5000, or change `PORT` in `.env` and update the Vite proxy in `frontend/vite.config.js` to the same backend port.
+- **Port 5173 is already in use:** Stop the process using port 5173, or change `server.port` in `frontend/vite.config.js`, then open the new Vite URL.
+- **The seeded ticket or users are missing:** From the repository root, run `npm run prisma:seed`, then reload the frontend. Use `ticket-1`, `user-1`, `user-2`, and `queue-1` for the documented flow.
+- **The database is not ready:** From the repository root, run `npx prisma migrate deploy`, then `npm run prisma:seed`.
+- **Node is older than 18:** Install a current Node.js LTS release, open a new shell, verify with `node --version`, and rerun the install commands.
+- **The browser shows connection refused:** Start the backend with `npm run dev` and the frontend with `cd frontend` followed by `npm run dev`.
+
+To stop either development server, focus its terminal and press `Ctrl+C`.
