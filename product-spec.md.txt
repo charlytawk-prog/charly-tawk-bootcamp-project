@@ -14,6 +14,7 @@ Employees across different departments lack a unified system to request and trac
 - **Standardized Request Workflows & Forms:** 
   - The system must use strictly pre-configured form templates for frequent internal requests (e.g., *IT Equipment Replacement*, *Employment Verification Letter*, *Attendance/Leave Adjustment*) rather than open text blocks.
   - Each template must enforce mandatory structured fields (e.g., calendar date pickers, asset tags, specific category selections) to guarantee that zero data is missing upfront and eliminate back-and-forth emails.
+- **AI-Assisted Request Intake:** Employees may describe an issue in free text and receive a structured suggestion containing a title, description, department queue, and priority to review before submission. The AI is advisory only: it never creates a ticket directly, and all existing validation and RBAC rules apply identically whether a ticket originated from manual entry or an AI suggestion.
 - **Structured Data Presentation:** 
   - Because submissions rely on strict standardized fields, the system must present the incoming data to department agents in a clean, organized key-value layout for rapid review.
 - **Priority & Expectation Management:** 
@@ -24,9 +25,11 @@ Employees across different departments lack a unified system to request and trac
   - The employee dashboard must display a clear status indicator showing the exact active department currently processing the request (e.g., *Current Department: HR* or *Current Department: Finance*) alongside a chronological audit log of state changes.
 - **Ticket Management:**
   - Department agents must be able to update ticket statuses (e.g., *Submitted*, *In Progress*, *Resolved*, *Closed*) and append comment notes to a request thread.
+  - An Employee may edit their own ticket's title, description, and priority only while it is in *Submitted*, *Pending Review*, or *Routed*. Once the ticket is *In Progress* or *Resolved*, employee edits are rejected.
 
 # Non-Functional Requirements
-- **Security & Access Control:** Role-Based Access Control (RBAC) must ensure that standard employees can only view and modify their own requests, while department agents can view queues assigned to their respective department.
+- **Security & Access Control:** Authentication uses self-hosted signed JWTs. Passwords are stored only as bcrypt hashes. NestJS guards protect authenticated endpoints and enforce role-based authorization: employees can access their own tickets, while Department Agents are limited to queues in their assigned department. This avoids third-party identity dependencies for the current learning-focused phase while leaving the authentication boundary replaceable with external SSO later.
+- **Performance & Attachments:** Ticket attachment bytes are stored locally in `uploads/`, while attachment metadata is persisted through Prisma in SQLite. This avoids cloud-storage dependencies for the current project phase; cloud object storage and its operational scaling concerns are deferred with production infrastructure.
 - **System Resilience & Graceful Degradation:** If the system encounters a backend failure or database timeout (such as an HTTP 500 error), it must catch the exception and display a user-friendly error message rather than crashing or displaying an infinite loading loop.
 
 # Assumptions / Constraints / Unknowns

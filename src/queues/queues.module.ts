@@ -4,6 +4,7 @@ import { QueuesService } from './queues.service';
 
 @Module({
   controllers: [QueuesController],
-  providers: [QueuesService]
+  providers: [QueuesService],
+  exports: [QueuesService],
 })
 export class QueuesModule {}

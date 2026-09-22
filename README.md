@@ -2,17 +2,32 @@
 
 The Internal Operations Service Hub is a ticketing system that lets employees submit internal service requests (IT, HR, Finance) and tracks each request through a controlled lifecycle as it moves between departments, instead of being lost in scattered emails and DMs.
 
-This repository contains the Week 1 design work and the Week 3 full-stack delivery: a React/Vite interface for submitting a ticket and viewing a ticket by ID, a NestJS API, Prisma/SQLite persistence, relational reference validation, and an ownership check based on the `x-user-id` header. The backend also retains the first three lifecycle states: `Submitted` -> `Pending Review` -> `Routed`.
+This repository contains the Week 1 design work and the full-stack delivery: a React/Vite interface with routed Employee and Department Agent workspaces; a NestJS API; Prisma/SQLite persistence; JWT authentication; JWT-backed ownership checks; department-scoped queue access; and the five-state lifecycle `Submitted` -> `Pending Review` -> `Routed` -> `In Progress` -> `Resolved`.
 
 ## What this implementation does
 
-- Submit a ticket with a title, description, priority, user ID, and queue ID.
+- Log in with a seeded email and password to receive a persisted browser JWT session.
+- Redirect Employees to `/employee` and Department Agents to `/agent` after login.
+- Protect role dashboards from direct URL access by the wrong role.
+- Submit a ticket with a title, description, priority, and queue ID.
 - Reject a ticket when its `userId` or `queueId` does not exist.
-- View a ticket by ID only when the supplied `x-user-id` matches the ticket owner.
-- Move tickets through `Submitted`, `Pending Review`, and `Routed` in order.
+- View a ticket by ID only when the verified JWT identity matches the ticket owner.
+- View the authenticated employee's tickets in newest-first order.
+- Let Department Agents view tickets in their own department's queue.
+- Let Department Agents search their queue and advance their own department's tickets from `Routed` to `In Progress` to `Resolved`.
+- Move tickets through all five lifecycle states in order.
 - Persist data in SQLite through Prisma.
+- Use optional AI-assisted intake to suggest ticket fields from a free-text issue description.
 
-Authentication, external integrations, runtime AI, CI/CD, deployment, monitoring, production infrastructure, and the later lifecycle states `In Progress` and `Resolved` are out of scope. The `x-user-id` header is unverified identity input, not authentication.
+## Implementation Notes
+
+The implemented architecture intentionally differs from the original planning diagram in two areas. Authentication is self-hosted: the NestJS API validates bcrypt password hashes and issues signed JWTs. NestJS guards verify JWTs and enforce role- and department-based authorization on protected endpoints. This avoids external authentication dependencies and supports the project's learning objectives; the auth module and token boundary can be replaced with an enterprise SSO integration in a future phase.
+
+Persistence uses Prisma with SQLite. Ticket attachments are written to the repository's `uploads/` directory, while Prisma records each attachment's ticket relationship, original filename, stored path, MIME type, size, and upload time. Cloud blob storage was deferred because production infrastructure is outside the current project phase.
+
+Enterprise SSO/Auth0 and cloud blob storage are therefore not part of the current implementation.
+
+CI/CD, deployment, monitoring, production infrastructure, and admin endpoints are out of scope. AI-assisted intake is implemented as an optional external integration described below. The frontend stores the JWT in `localStorage` for this development/teaching tool so refreshes preserve the session; this is not a production security posture.
 
 ## Prerequisites
 
@@ -24,7 +39,7 @@ Install:
 | npm | Included with Node.js | `npm --version` |
 | Git | Any recent version | `git --version` |
 
-No external database, Docker, or account is required.
+No external database or Docker is required. A Groq account and API key are optional for AI-assisted intake; manual ticket creation does not require them.
 
 ## Install
 
@@ -46,7 +61,7 @@ npm install
 cd ..
 ```
 
-`npx prisma migrate deploy` applies the committed migration in `prisma/migrations/`. `npm run prisma:seed` creates the demo users, queues, and `ticket-1`. The local SQLite connection is configured in `.env` as `file:./dev.db`.
+`npx prisma migrate deploy` applies the committed migrations in `prisma/migrations/`. `npm run prisma:seed` creates the demo users, IT/Finance/HR queues, and sample tickets. The local SQLite connection is configured in `.env` as `file:./dev.db`.
 
 ## Run
 
@@ -69,13 +84,46 @@ Open `http://localhost:5173`. Vite is configured to proxy `/api` requests to `ht
 
 ## Exercise the flow
 
-1. Open `http://localhost:5173`.
-2. In **Submit a ticket**, enter any title and description. Keep **Acting as user ID** as `user-1`, keep **Queue ID** as `queue-1`, and choose a priority.
-3. Select **Create ticket**. The UI shows the returned ticket ID and its initial `Submitted` status. The backend returns `201` for this request.
-4. In **View a ticket by ID**, type the seeded ticket ID `ticket-1` and user ID `user-1`, then select **View ticket**. This is the allowed case: `ticket-1` belongs to seeded user `user-1`, so the UI displays the ticket and the API returns `200`.
-5. Keep `ticket-1`, change **Your user ID** to `user-2`, and select **View ticket** again. This is the denied case: `user-2` is a real seeded user but is not the owner, so the UI displays the backend error and `HTTP 403`.
+1. Open `http://localhost:5173/login`.
+2. Log in with `alice@example.com` and `password123`. This is TEST-ONLY seed data. The app redirects to `/employee` and persists the JWT in browser storage so refresh keeps the Employee dashboard open.
+3. In **My Tickets**, Alice sees only her own seeded tickets, newest first, with visible status and priority badges. Select a ticket to load its full detail.
+4. In **Submit a ticket**, choose a readable department queue such as `Technical Support (IT)`, enter a title and description, choose a priority, and select **Create ticket**. The request sends the underlying queue ID through the API, while the UI keeps the choice human-readable; the new ticket appears in My Tickets with `Submitted` status.
+5. Log out, then log in with `bob@example.com` and `password123`. Bob is a seeded IT Department Agent. The app redirects to `/agent`, where his dashboard shows separate **Open** and **Finished** queue lanes.
+6. Use the queue search to filter by title or ID. Ticket rows and detail views show names such as `Technical Support · IT` instead of raw queue IDs. For an `In Progress` ticket, select **Mark Resolved** and confirm it moves to Finished after the queue refreshes. For a `Routed` ticket, select **Start Processing** and confirm it becomes `In Progress`.
+7. Try changing the URL manually from `/employee` to `/agent` while logged in as Alice, or from `/agent` to `/employee` while logged in as Bob. The route guard redirects each user back to their permitted dashboard.
+8. Log out to return to `/login`; refresh afterward and confirm the stored session is gone.
+9. The backend also preserves the owner-only detail rule: a different user's valid JWT receives `HTTP 403`, a missing/invalid JWT receives `HTTP 401`, and a fake ticket ID receives `HTTP 404`.
 
-The seed data also includes user `user-3` and queue `queue-2`. To reset the known demo records after experimenting, run `npm run prisma:seed` again from the repository root.
+Seeded TEST-ONLY accounts include `alice@example.com` (Employee), `bob@example.com` (Department Agent, IT), `helen@example.com` (Department Agent, HR), and `frank@example.com` (Department Agent, Finance). They all use `password123`. To reset the known demo records after experimenting, run `npm run prisma:seed` again from the repository root.
+
+## AI-Assisted Intake (Week 4)
+
+The optional AI assist turns an employee's plain-text issue description into a reviewable title, description, queue, and priority suggestion; it never creates a ticket by itself.
+
+### Setup
+
+1. Open [console.groq.com](https://console.groq.com), open **API Keys**, and select **Create API Key**.
+2. Add the key to the repository root `.env` file:
+
+```dotenv
+GROQ_API_KEY=your-groq-api-key
+```
+
+The feature degrades gracefully without a key or with an invalid key: the suggest request returns a handled provider failure, the UI shows `AI suggestion unavailable — please fill out the form below manually`, and manual ticket creation remains available. This was verified through the browser with a forced `provider_unavailable` response; the manually completed ticket still created normally.
+
+### Exercise the AI flow
+
+In the Employee workspace, describe your issue in plain text in **Describe your issue in your own words**, then select **Get AI suggestion**. Review and edit the prefilled title, description, queue, and priority as needed, and select **Create ticket** as normal.
+
+### Run the eval
+
+From the repository root:
+
+```sh
+npm run eval:ai
+```
+
+The eval checks real Groq suggestions against the real queue catalog and priority enum, exercises the retry-and-hard-fail bounded-context proof, and checks fake invalid-output and provider-failure responses. Unlike `npm test`, it makes real network calls to Groq and requires a working `GROQ_API_KEY`.
 
 ## Tests
 
@@ -88,11 +136,11 @@ npm test
 Expected passing output includes:
 
 ```text
-Test Suites: 1 passed, 1 total
-Tests:       4 passed, 4 total
+Test Suites: 4 passed, 4 total
+Tests:       27 passed, 27 total
 ```
 
-The suite covers lifecycle transition rules, real SQLite persistence and foreign-key reference validation, HTTP ownership authorization, and lifecycle regression behavior.
+The suite covers authentication, JWT verification, the complete five-state lifecycle, real SQLite persistence and foreign-key reference validation, personal ticket history, HTTP ownership authorization, department queue scoping, guarded agent status updates, lifecycle regression behavior, and the AI provider contract and graceful failure outcomes.
 
 ## Project structure
 
@@ -110,7 +158,8 @@ charly-tawk-bootcamp-project/
 ├── data/
 ├── docs/
 │   ├── week2-agentic-workflow.md
-│   └── week3-full-stack-delivery.md
+│   ├── week3-full-stack-delivery.md
+│   └── week4-production-ai.md
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
@@ -130,6 +179,7 @@ charly-tawk-bootcamp-project/
 │   ├── app.controller.ts
 │   ├── app.module.ts
 │   ├── main.ts
+│   ├── ai/
 │   ├── controllers/
 │   ├── middleware/
 │   ├── prisma/
@@ -138,6 +188,8 @@ charly-tawk-bootcamp-project/
 │   ├── tickets/
 │   └── users/
 └── test/
+    ├── ai-eval.ts
+    ├── ai-provider.spec.ts
     ├── test-database.ts
     └── tickets.spec.ts
 ```

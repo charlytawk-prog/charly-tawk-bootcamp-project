@@ -5,8 +5,12 @@
   * `User`: Represents employees, department agents, system administrators, and department managers.
   * `Ticket`: The core operational request item generated from intake templates.
   * `DepartmentQueue`: The organizational routing target (e.g., HR, Finance, IT).
-  * `Comment / Response`: The communication logs/messages attached to a ticket between users, agents, and departments.
+  * `Comment / Response`: The communication logs/messages attached to a ticket between users, agents, and departments. **Specified but not yet implemented — no comment/note feature exists in the current build.**
   * `Attachment`: Supporting files associated with a request or response.
+* **Current implemented fields:**
+  * `User.password`: Stored as a bcrypt hash and never returned by the user endpoints. The security gap in `GET /api/users` and `GET /api/users/:id` was found and closed in the Week 4 production-hardening phase on 2026-09-21 by selecting only `id`, `name`, `email`, `role`, and `department`; the user-creation response uses the same safe projection.
+  * `User.department`: Nullable; the seeded Department Agent records have `IT`, `HR`, or `Finance`, while employee and admin seed records leave it unset. It is used for department-scoped access.
+  * `DepartmentQueue.department`: The queue's department value; the current seeded queues use the fixed values `IT`, `HR`, or `Finance`.
 * **Roles & Permissions:**
   * **Employee:** Can submit requests and view only their own personal request history.
   * **Department Agent:** Can view, process, and update tickets assigned to their specific department queue.
@@ -21,14 +25,16 @@
 ## 2. Lifecycle + Rules
 * **State Transitions:** Tickets move through a controlled lifecycle: `Submitted` --->`Pending Review` --->`Routed` ---> `In Progress` ---> `Resolved`.
 * **Invariants:** Every ticket must reference a valid existing user ID and target a valid department queue. Priority tags (`Low`, `Medium`, `Urgent`) must be validated upon intake.
+* **Employee self-edit rule:** An Employee may edit their own ticket's title, description, and priority only while it is in `Submitted`, `Pending Review`, or `Routed` status. Once it is `In Progress` or `Resolved`, edits are rejected. The rule is enforced by the `TicketOwnerGuard` on `PATCH /api/tickets/:id/edit` and the `editableStatuses` check in `TicketsService.editTicket`.
 * **Authorization-Sensitive Rules (RBAC):** 
   * Regular employees are restricted to their own requests.
   * Agents are restricted to their assigned department queue.
   * System Admins possess global clearance to read and audit all system state transitions, inter-departmental handoffs, and messaging logs.
 
 ## 3. Storage
-* **Relational / Document Reasoning:** Relational table structures are chosen for `Users`, `Tickets`, `DepartmentQueues`, and `Comments` to enforce strict foreign key constraints, maintain transactional integrity across state changes, and preserve chronological messaging threads.
-* **Durable vs. Derived Data:** Core properties like user identity, ticket creation timestamps, message history, and final status are permanently durable in storage, whereas queue sort order based on priority is dynamically evaluated.
+* **Relational / Document Reasoning:** Prisma manages a local SQLite database for `Users`, `Tickets`, `DepartmentQueues`, and `Attachments`. The relational model enforces foreign key constraints and preserves transactional state changes. Comments remain specified but are not implemented.
+* **Attachment storage:** Attachment bytes are stored on the local filesystem in `uploads/`. The Prisma `Attachment` model stores the ticket relationship, original filename, filesystem path, MIME type, size, and upload time. Cloud object storage is deferred because production infrastructure is outside the current project phase.
+* **Durable vs. Derived Data:** Core properties such as user identity, ticket creation timestamps, attachment metadata, and final status are durable in SQLite, whereas queue sort order based on priority is dynamically evaluated.
 
 ## 4. Access
 * **Important Queries & Access Patterns:** 
