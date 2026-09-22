@@ -8,9 +8,9 @@ import {
 import { JwtUser } from '../auth/jwt-auth.guard';
 import { TicketsService } from './tickets.service';
 
-// Strictly the ticket's owner - no department-agent fallback (used for employee self-edit).
+// Allows the ticket's owner OR a department agent from the ticket's own department queue.
 @Injectable()
-export class TicketOwnerGuard implements CanActivate {
+export class TicketAccessGuard implements CanActivate {
 	constructor(private readonly ticketsService: TicketsService) {}
 
 	async canActivate(context: ExecutionContext) {
@@ -19,13 +19,16 @@ export class TicketOwnerGuard implements CanActivate {
 			user?: JwtUser;
 		}>();
 		const ticket = await this.ticketsService.getTicketById(request.params.id);
-		const userId = request.user?.sub;
+		const user = request.user;
 
-		if (typeof userId !== 'string' || !userId) {
+		if (typeof user?.sub !== 'string' || !user.sub) {
 			throw new UnauthorizedException({ error: 'Missing authenticated user' });
 		}
 
-		if (ticket.userId !== userId) {
+		const isOwner = ticket.userId === user.sub;
+		const isDepartmentAgent = user.role === 'Department Agent' && user.department === ticket.queue.department;
+
+		if (!isOwner && !isDepartmentAgent) {
 			throw new ForbiddenException({
 				error: 'Forbidden: you do not have access to this ticket',
 			});

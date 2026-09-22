@@ -12,12 +12,15 @@ model User {
   name    String
   email   String
   role    String
+  password String
+  department String?
   tickets Ticket[]
 }
 
 model DepartmentQueue {
   id          String   @id
   name        String
+  department  String
   description String?
   tickets     Ticket[]
 }
@@ -33,9 +36,23 @@ model Ticket {
   queueId     String
   user        User            @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   queue       DepartmentQueue @relation(fields: [queueId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  attachments Attachment[]
 
   @@index([userId])
   @@index([queueId])
   @@index([status])
   @@index([priority])
+}
+
+model Attachment {
+  id         String   @id
+  ticketId   String
+  filename   String
+  storedPath String
+  mimetype   String
+  size       Int
+  uploadedAt DateTime
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([ticketId])
 }

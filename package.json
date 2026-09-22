@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "eval:ai": "node -r ts-node/register -r dotenv/config test/ai-eval.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -23,9 +24,11 @@
   "dependencies": {
     "@nestjs/common": "^11.2.3",
     "@nestjs/core": "^11.2.3",
+    "@nestjs/jwt": "^11.0.1",
     "@nestjs/platform-express": "^11.2.3",
     "@nestjs/testing": "^11.2.3",
     "@prisma/client": "^6.19.3",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "prisma": "^6.19.3",
     "reflect-metadata": "^0.2.2",
@@ -33,7 +36,9 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
+    "@types/bcrypt": "^6.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.20.2",
     "@types/supertest": "^7.2.1",
     "jest": "^30.5.1",
