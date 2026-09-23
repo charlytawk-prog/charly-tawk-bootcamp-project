@@ -25,7 +25,7 @@
 
 ## 2. Lifecycle + Rules
 * **State Transitions:** Tickets move through a controlled lifecycle: `Submitted` --->`Pending Review` --->`Routed` ---> `In Progress` ---> `Resolved`.
-* **Invariants:** Every ticket must reference a valid existing user ID and target a valid department queue. Priority tags (`Low`, `Medium`, `Urgent`) must be validated upon intake.
+* **Invariants:** Every ticket must reference a valid existing user ID and target a valid department queue. Priority tags (`Low`, `Medium`, `High`, `Urgent`) must be validated upon intake.
 * **Employee self-edit rule:** An Employee may edit their own ticket's title, description, and priority only while it is in `Submitted`, `Pending Review`, or `Routed` status. Once it is `In Progress` or `Resolved`, edits are rejected. The rule is enforced by the `TicketOwnerGuard` on `PATCH /api/tickets/:id/edit` and the `editableStatuses` check in `TicketsService.editTicket`.
 * **Authorization-Sensitive Rules (RBAC):**
   * Regular employees are restricted to their own requests.
