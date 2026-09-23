@@ -7,7 +7,7 @@ This repository contains the Week 1 design work and the full-stack delivery: a R
 ## What this implementation does
 
 - Log in with a seeded email and password to receive a persisted browser JWT session.
-- Redirect Employees to `/employee` and Department Agents to `/agent` after login.
+- Redirect Employees to `/employee`, Department Agents to `/agent`, and the seeded System Admin to `/admin` after login.
 - Protect role dashboards from direct URL access by the wrong role.
 - Submit a ticket with a title, description, priority, and queue ID.
 - Reject a ticket when its `userId` or `queueId` does not exist.
@@ -19,6 +19,10 @@ This repository contains the Week 1 design work and the full-stack delivery: a R
 - Persist data in SQLite through Prisma.
 - Use optional AI-assisted intake to suggest ticket fields from a free-text issue description.
 
+## Admin capabilities
+
+The seeded System Admin is Charlie Admin: `charlie@example.com` with the test-only password `password123`. After login, the frontend redirects to `/admin`. The admin dashboard lists and filters all tickets across IT, HR, and Finance, edits queue, priority, and any of the five valid ticket states, and manages user roles and departments. The backend endpoints are guarded under `/api/admin/*`; employees and Department Agents cannot access them. User responses use only `id`, `name`, `email`, `role`, and `department`; passwords are never returned. The admin status override is deliberately isolated from the existing one-step employee/agent transition logic, and no audit log or change-history feature is built yet.
+
 ## Implementation Notes
 
 The implemented architecture intentionally differs from the original planning diagram in two areas. Authentication is self-hosted: the NestJS API validates bcrypt password hashes and issues signed JWTs. NestJS guards verify JWTs and enforce role- and department-based authorization on protected endpoints. This avoids external authentication dependencies and supports the project's learning objectives; the auth module and token boundary can be replaced with an enterprise SSO integration in a future phase.
@@ -27,7 +31,7 @@ Persistence uses Prisma with SQLite. Ticket attachments are written to the repos
 
 Enterprise SSO/Auth0 and cloud blob storage are therefore not part of the current implementation.
 
-CI/CD, deployment, monitoring, production infrastructure, and admin endpoints are out of scope. AI-assisted intake is implemented as an optional external integration described below. The frontend stores the JWT in `localStorage` for this development/teaching tool so refreshes preserve the session; this is not a production security posture.
+CI/CD, deployment, monitoring, and production infrastructure are out of scope. Admin endpoints are implemented under `/api/admin/*` as described above. AI-assisted intake is implemented as an optional external integration described below. The frontend stores the JWT in `localStorage` for this development/teaching tool so refreshes preserve the session; this is not a production security posture.
 
 ## Prerequisites
 
@@ -150,8 +154,8 @@ npm test
 Expected passing output includes:
 
 ```text
-Test Suites: 4 passed, 4 total
-Tests:       27 passed, 27 total
+Test Suites: 5 passed, 5 total
+Tests:       38 passed, 38 total
 ```
 
 The suite covers authentication, JWT verification, the complete five-state lifecycle, real SQLite persistence and foreign-key reference validation, personal ticket history, HTTP ownership authorization, department queue scoping, guarded agent status updates, lifecycle regression behavior, and the AI provider contract and graceful failure outcomes.

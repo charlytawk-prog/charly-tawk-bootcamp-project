@@ -272,8 +272,6 @@ function Shell({ account, onLogout, children }) {
     <main className="app-shell">
       <header className="masthead">
         <div className="masthead-top"><p className="eyebrow">Internal Operations Service Hub</p><span className="phase-mark">WORKFLOW / ROUTED</span></div>
-        <h1>Work requests, with the rules visible.</h1>
-        <p className="intro">A small operations desk for creating requests, checking ownership, and moving department work forward.</p>
         <div className="session-bar"><span>Logged in as <strong>{account.name}</strong> <small>({account.email})</small>, role: <strong>{account.role}</strong>{account.department ? ` / ${account.department}` : ''}</span><button className="button-quiet" type="button" onClick={onLogout}>Log out</button></div>
       </header>
       {children}
@@ -310,7 +308,7 @@ function LoginPage({ onLogin, message }) {
       }
       const account = { ...payload, email, name };
       onLogin(response.access_token, account);
-      navigate(payload.role === 'Employee' ? '/employee' : payload.role === 'Department Agent' ? '/agent' : '/no-dashboard');
+      navigate(payload.role === 'Employee' ? '/employee' : payload.role === 'Department Agent' ? '/agent' : '/admin');
     } catch (loginError) {
       setError(loginError.message);
     } finally {
@@ -322,8 +320,6 @@ function LoginPage({ onLogin, message }) {
     <main className="app-shell login-page">
       <header className="masthead">
         <div className="masthead-top"><p className="eyebrow">Internal Operations Service Hub</p><span className="phase-mark">IDENTITY / LOGIN</span></div>
-        <h1>Work requests, with the rules visible.</h1>
-        <p className="intro">Sign in to reach the workspace for your role.</p>
       </header>
       <section className="panel login-panel" aria-labelledby="login-heading">
         <div className="section-heading"><span className="step-number">00</span><div><p className="section-kicker">Identity checkpoint</p><h2 id="login-heading">Log in to continue</h2></div></div>
@@ -352,10 +348,60 @@ function EmployeePage({ token, account, onLogout, onUnauthorized }) {
   const [myTickets, setMyTickets] = useState(null);
   const [myTicketsError, setMyTicketsError] = useState(null);
   const [isLoadingMine, setIsLoadingMine] = useState(false);
+  const [sortBy, setSortBy] = useState('newest');
   const [queues, setQueues] = useState(null);
   const [queueListError, setQueueListError] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [detailError, setDetailError] = useState(null);
+
+  const priorityOrder = ['Low', 'Medium', 'High', 'Urgent'];
+  const statusOrder = ['Submitted', 'Pending Review', 'Routed', 'In Progress', 'Resolved'];
+
+  function normalizePriority(value) {
+    const raw = String(value ?? '').trim();
+    const lookup = raw.toLowerCase();
+    const match = priorityOrder.find((priority) => priority.toLowerCase() === lookup);
+    return match ?? raw;
+  }
+
+  function normalizeStatus(value) {
+    const raw = String(value ?? '').trim();
+    const match = statusOrder.find((status) => status.toLowerCase() === raw.toLowerCase());
+    return match ?? raw;
+  }
+
+  function sortTickets(tickets, mode) {
+    if (!tickets) return tickets;
+    const list = [...tickets];
+
+    switch (mode) {
+      case 'oldest':
+        return list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      case 'priority-high-low':
+        return list.sort((a, b) => {
+          const diff = priorityOrder.indexOf(normalizePriority(b.priority)) - priorityOrder.indexOf(normalizePriority(a.priority));
+          if (diff !== 0) return diff;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      case 'priority-low-high':
+        return list.sort((a, b) => {
+          const diff = priorityOrder.indexOf(normalizePriority(a.priority)) - priorityOrder.indexOf(normalizePriority(b.priority));
+          if (diff !== 0) return diff;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      case 'status-submitted-resolved':
+        return list.sort((a, b) => {
+          const diff = statusOrder.indexOf(normalizeStatus(a.status)) - statusOrder.indexOf(normalizeStatus(b.status));
+          if (diff !== 0) return diff;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      case 'newest':
+      default:
+        return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+  }
+
+  const sortedMyTickets = sortTickets(myTickets, sortBy);
 
   async function loadMine() {
     setIsLoadingMine(true);
@@ -460,11 +506,25 @@ function EmployeePage({ token, account, onLogout, onUnauthorized }) {
     <Shell account={account} onLogout={onLogout}>
       <section className="panel history-panel" aria-labelledby="mine-heading">
         <div className="section-heading"><span className="step-number">01</span><div><p className="section-kicker">Employee workspace</p><h2 id="mine-heading">My Tickets</h2></div><button className="button-quiet refresh-button" type="button" onClick={loadMine} disabled={isLoadingMine}>{isLoadingMine ? 'Refreshing...' : 'Refresh'}</button></div>
-        <p className="workspace-welcome">Welcome, <strong>{account.name}</strong>. Your requests are listed newest first.</p>
+        <p className="workspace-welcome">Welcome, <strong>{account.name}</strong>. Your requests are listed by <strong>{sortBy === 'newest' ? 'Newest first' : sortBy === 'oldest' ? 'Oldest first' : sortBy === 'priority-high-low' ? 'Priority: High to Low' : sortBy === 'priority-low-high' ? 'Priority: Low to High' : 'Status: Submitted to Resolved'}</strong>.</p>
+        {myTickets && myTickets.length > 0 && (
+          <div className="ticket-sort-bar">
+            <label className="field ticket-sort-field" htmlFor="my-tickets-sort">
+              <span>Sort by</span>
+              <select id="my-tickets-sort" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="priority-high-low">Priority: High to Low</option>
+                <option value="priority-low-high">Priority: Low to High</option>
+                <option value="status-submitted-resolved">Status: Submitted to Resolved</option>
+              </select>
+            </label>
+          </div>
+        )}
         {myTicketsError && <div className="result result-error"><p>{myTicketsError.message}</p></div>}
         {!myTickets && !myTicketsError && <div className="result result-neutral"><p>Loading your tickets...</p></div>}
         {myTickets && !myTickets.length && <div className="result result-neutral"><p>You have no tickets yet.</p></div>}
-        {myTickets?.length > 0 && <div className="ticket-list">{myTickets.map((ticket) => <TicketRow key={ticket.id} ticket={ticket} onSelect={handleSelectTicket} />)}</div>}
+        {sortedMyTickets?.length > 0 && <div className="ticket-list">{sortedMyTickets.map((ticket) => <TicketRow key={ticket.id} ticket={ticket} onSelect={handleSelectTicket} />)}</div>}
       </section>
       <div className="flow-grid">
         <section className="panel" aria-labelledby="submit-heading">
@@ -598,10 +658,161 @@ function AgentPage({ token, account, onLogout, onUnauthorized }) {
   );
 }
 
+function AdminPage({ token, account, onLogout, onUnauthorized }) {
+  const [tickets, setTickets] = useState(null);
+  const [users, setUsers] = useState(null);
+  const [queues, setQueues] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketFilters, setTicketFilters] = useState({ department: '', status: '', search: '' });
+  const [ticketError, setTicketError] = useState(null);
+  const [userError, setUserError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSavingTicket, setIsSavingTicket] = useState(false);
+  const [savingUserId, setSavingUserId] = useState(null);
+  const [ticketSaveError, setTicketSaveError] = useState(null);
+  const [userSaveError, setUserSaveError] = useState(null);
+  const [ticketForm, setTicketForm] = useState(null);
+  const [userForms, setUserForms] = useState({});
+
+  async function loadTickets(filters = ticketFilters) {
+    setIsLoading(true);
+    setTicketError(null);
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+    try {
+      const nextTickets = await request(`/admin/tickets${params.toString() ? `?${params}` : ''}`, { headers: authHeaders(token) }, onUnauthorized);
+      setTickets(nextTickets);
+      if (selectedTicket) {
+        const refreshed = nextTickets.find((ticket) => ticket.id === selectedTicket.id);
+        if (refreshed) {
+          setSelectedTicket(refreshed);
+          setTicketForm({ queueId: refreshed.queueId, priority: refreshed.priority, status: refreshed.status });
+        }
+      }
+    } catch (error) {
+      setTicketError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function loadUsers() {
+    setUserError(null);
+    try {
+      const nextUsers = await request('/admin/users', { headers: authHeaders(token) }, onUnauthorized);
+      setUsers(nextUsers);
+      setUserForms(Object.fromEntries(nextUsers.map((user) => [user.id, { role: user.role, department: user.department ?? '' }])));
+    } catch (error) {
+      setUserError(error);
+    }
+  }
+
+  async function loadQueues() {
+    try {
+      setQueues(await request('/queues', { headers: authHeaders(token) }, onUnauthorized));
+    } catch (error) {
+      setTicketError(error);
+    }
+  }
+
+  useEffect(() => { loadTickets(); loadUsers(); loadQueues(); }, [token]);
+
+  function selectTicket(ticket) {
+    setSelectedTicket(ticket);
+    setTicketForm({ queueId: ticket.queueId, priority: ticket.priority, status: ticket.status });
+    setTicketSaveError(null);
+  }
+
+  async function saveTicket(event) {
+    event.preventDefault();
+    setIsSavingTicket(true);
+    setTicketSaveError(null);
+    try {
+      const updated = await request(`/admin/tickets/${encodeURIComponent(selectedTicket.id)}`, {
+        method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(ticketForm),
+      }, onUnauthorized);
+      setSelectedTicket(updated);
+      setTicketForm({ queueId: updated.queueId, priority: updated.priority, status: updated.status });
+      await loadTickets();
+    } catch (error) {
+      setTicketSaveError(error);
+    } finally {
+      setIsSavingTicket(false);
+    }
+  }
+
+  async function saveUser(userId) {
+    setSavingUserId(userId);
+    setUserSaveError(null);
+    try {
+      await request(`/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'PATCH', headers: authHeaders(token), body: JSON.stringify({
+          role: userForms[userId].role,
+          department: userForms[userId].department || null,
+        }),
+      }, onUnauthorized);
+      await loadUsers();
+    } catch (error) {
+      setUserSaveError({ id: userId, error });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  function updateUserForm(userId, field, value) {
+    setUserForms((current) => ({ ...current, [userId]: { ...current[userId], [field]: value } }));
+  }
+
+  return (
+    <Shell account={account} onLogout={onLogout}>
+      <section className="panel admin-panel" aria-labelledby="admin-tickets-heading">
+        <div className="section-heading"><span className="step-number">01</span><div><p className="section-kicker">System Admin workspace</p><h2 id="admin-tickets-heading">Global tickets</h2></div><button className="button-quiet refresh-button" type="button" onClick={() => loadTickets()} disabled={isLoading}>{isLoading ? 'Refreshing...' : 'Refresh'}</button></div>
+        <p className="workspace-welcome">All tickets across every department, owner, and lifecycle state.</p>
+        <div className="admin-filter-grid">
+          <label className="field"><span>Department</span><select value={ticketFilters.department} onChange={(event) => { const next = { ...ticketFilters, department: event.target.value }; setTicketFilters(next); loadTickets(next); }}><option value="">All departments</option>{['IT', 'HR', 'Finance'].map((department) => <option key={department} value={department}>{department}</option>)}</select></label>
+          <label className="field"><span>Status</span><select value={ticketFilters.status} onChange={(event) => { const next = { ...ticketFilters, status: event.target.value }; setTicketFilters(next); loadTickets(next); }}><option value="">All statuses</option>{BOARD_COLUMNS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+          <label className="field"><span>Search title or ticket ID</span><input value={ticketFilters.search} onChange={(event) => setTicketFilters({ ...ticketFilters, search: event.target.value })} onKeyDown={(event) => { if (event.key === 'Enter') loadTickets(); }} placeholder="Search tickets" /></label>
+          <button type="button" onClick={() => loadTickets()}>Apply filters</button>
+        </div>
+        {ticketError && <div className="result result-error"><p className="result-label">Tickets unavailable</p><p>{ticketError.message}</p></div>}
+        {!tickets && !ticketError && <div className="result result-neutral"><p>Loading global tickets...</p></div>}
+        {tickets && <div className="ticket-list">{tickets.length ? tickets.map((ticket) => <TicketRow key={ticket.id} ticket={ticket} onSelect={() => selectTicket(ticket)} />) : <p className="empty-copy">No tickets match these filters.</p>}</div>}
+      </section>
+
+      <section className="panel admin-panel" aria-labelledby="admin-edit-heading">
+        <div className="section-heading"><span className="step-number">02</span><div><p className="section-kicker">Selected request</p><h2 id="admin-edit-heading">Edit ticket</h2></div></div>
+        {!selectedTicket && <div className="result result-neutral"><p>Select a ticket above to edit its queue, priority, or status.</p></div>}
+        {selectedTicket && ticketForm && <form className="admin-edit-grid" onSubmit={saveTicket}>
+          <div className="admin-selected-ticket"><strong>{selectedTicket.title}</strong><span>{selectedTicket.id} · {ownerLabel(selectedTicket)}</span></div>
+          <label className="field"><span>Department queue</span><select value={ticketForm.queueId} onChange={(event) => setTicketForm({ ...ticketForm, queueId: event.target.value })}>{queues?.map((queue) => <option key={queue.id} value={queue.id}>{queue.name} ({queue.department})</option>)}</select></label>
+          <label className="field"><span>Priority</span><select value={ticketForm.priority.toLowerCase()} onChange={(event) => setTicketForm({ ...ticketForm, priority: event.target.value })}>{['low', 'medium', 'high', 'urgent'].map((priority) => <option key={priority} value={priority}>{priority[0].toUpperCase() + priority.slice(1)}</option>)}</select></label>
+          <label className="field"><span>Status override</span><select value={ticketForm.status} onChange={(event) => setTicketForm({ ...ticketForm, status: event.target.value })}>{BOARD_COLUMNS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+          <button type="submit" disabled={isSavingTicket}>{isSavingTicket ? 'Saving...' : 'Save changes'}</button>
+          {ticketSaveError && <div className="result result-error"><p className="result-label">Ticket update rejected</p><p>{ticketSaveError.message}</p></div>}
+        </form>}
+      </section>
+
+      <section className="panel admin-panel" aria-labelledby="admin-users-heading">
+        <div className="section-heading"><span className="step-number">03</span><div><p className="section-kicker">Access management</p><h2 id="admin-users-heading">Users</h2></div></div>
+        <p className="workspace-welcome">Safe user data only. Passwords are never returned by the admin endpoint.</p>
+        {userError && <div className="result result-error"><p className="result-label">Users unavailable</p><p>{userError.message}</p></div>}
+        {!users && !userError && <div className="result result-neutral"><p>Loading users...</p></div>}
+        {users && <div className="user-list">{users.map((user) => <article className="user-row" key={user.id}>
+          <div className="user-identity"><strong>{user.name}</strong><span>{user.email}</span><small>{user.id}</small></div>
+          <label className="field"><span>Role</span><select value={userForms[user.id]?.role ?? user.role} onChange={(event) => updateUserForm(user.id, 'role', event.target.value)}><option>Employee</option><option>Department Agent</option><option>System Admin</option></select></label>
+          <label className="field"><span>Department</span><select value={userForms[user.id]?.department ?? user.department ?? ''} onChange={(event) => updateUserForm(user.id, 'department', event.target.value)}><option value="">None</option><option value="IT">IT</option><option value="HR">HR</option><option value="Finance">Finance</option></select></label>
+          <button type="button" onClick={() => saveUser(user.id)} disabled={savingUserId === user.id}>{savingUserId === user.id ? 'Saving...' : 'Save'}</button>
+          {userSaveError?.id === user.id && <div className="result result-error"><p>{userSaveError.error.message}</p></div>}
+        </article>)}</div>}
+      </section>
+    </Shell>
+  );
+}
+
 function ProtectedRoute({ account, role, children }) {
   const location = useLocation();
   if (!account) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (account.role !== role) return <Navigate to={account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/no-dashboard'} replace />;
+  if (account.role !== role) return <Navigate to={account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/admin'} replace />;
   return children;
 }
 
@@ -648,11 +859,12 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={account ? <Navigate to={account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/no-dashboard'} replace /> : <LoginPage onLogin={handleLogin} message={message} />} />
+      <Route path="/login" element={account ? <Navigate to={account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/admin'} replace /> : <LoginPage onLogin={handleLogin} message={message} />} />
       <Route path="/employee" element={<ProtectedRoute account={account} role="Employee"><EmployeePage token={token} account={account} onLogout={() => logout()} onUnauthorized={handleUnauthorized} /></ProtectedRoute>} />
       <Route path="/agent" element={<ProtectedRoute account={account} role="Department Agent"><AgentPage token={token} account={account} onLogout={() => logout()} onUnauthorized={handleUnauthorized} /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute account={account} role="System Admin"><AdminPage token={token} account={account} onLogout={() => logout()} onUnauthorized={handleUnauthorized} /></ProtectedRoute>} />
       <Route path="/no-dashboard" element={account ? <NoDashboard account={account} onLogout={() => logout()} /> : <Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to={account ? (account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/no-dashboard') : '/login'} replace />} />
+      <Route path="*" element={<Navigate to={account ? (account.role === 'Employee' ? '/employee' : account.role === 'Department Agent' ? '/agent' : '/admin') : '/login'} replace />} />
     </Routes>
   );
 }

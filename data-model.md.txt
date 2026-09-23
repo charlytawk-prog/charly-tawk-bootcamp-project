@@ -1,7 +1,7 @@
 # Data Model: Internal Operations Service Hub
 
 ## 1. Domain
-* **Important Entities:** 
+* **Important Entities:**
   * `User`: Represents employees, department agents, system administrators, and department managers.
   * `Ticket`: The core operational request item generated from intake templates.
   * `DepartmentQueue`: The organizational routing target (e.g., HR, Finance, IT).
@@ -14,22 +14,25 @@
 * **Roles & Permissions:**
   * **Employee:** Can submit requests and view only their own personal request history.
   * **Department Agent:** Can view, process, and update tickets assigned to their specific department queue.
-  * **System Admin:** Has full global access to oversee all tickets, cross-department communications, user roles, and system configurations.
-* **Relationships & Cardinality:** 
+  * **System Admin:** Has guarded global access through `GET /api/admin/tickets` to view tickets across every department, owner, and status, and through `PATCH /api/admin/tickets/:id` to edit a ticket's queue, priority, or status. The admin status endpoint deliberately permits any of the five valid lifecycle states, including non-adjacent overrides such as `Submitted` directly to `Resolved`.
+  * **System Admin user management:** Has guarded access through `GET /api/admin/users` and `PATCH /api/admin/users/:id` to view the safe user projection and manage supported user roles and departments. Passwords are never included in these responses.
+* **Relationships & Cardinality:**
   * One `User` can submit many `Tickets` (1:N).
   * One `DepartmentQueue` manages many `Tickets` (1:N).
   * One `Ticket` can contain many `Comments / Responses` (1:N).
   * One `Ticket` can contain many file `Attachments` (1:N).
-* **Data Ownership:** Employees own their submitted requests; department agents own the state transitions within their assigned queues; System Admins hold overarching audit and management access.
+* **Data Ownership:** Employees own their submitted requests; department agents own the state transitions within their assigned queues; System Admins hold overarching global ticket and user-management access.
 
 ## 2. Lifecycle + Rules
 * **State Transitions:** Tickets move through a controlled lifecycle: `Submitted` --->`Pending Review` --->`Routed` ---> `In Progress` ---> `Resolved`.
 * **Invariants:** Every ticket must reference a valid existing user ID and target a valid department queue. Priority tags (`Low`, `Medium`, `Urgent`) must be validated upon intake.
 * **Employee self-edit rule:** An Employee may edit their own ticket's title, description, and priority only while it is in `Submitted`, `Pending Review`, or `Routed` status. Once it is `In Progress` or `Resolved`, edits are rejected. The rule is enforced by the `TicketOwnerGuard` on `PATCH /api/tickets/:id/edit` and the `editableStatuses` check in `TicketsService.editTicket`.
-* **Authorization-Sensitive Rules (RBAC):** 
+* **Authorization-Sensitive Rules (RBAC):**
   * Regular employees are restricted to their own requests.
   * Agents are restricted to their assigned department queue.
-  * System Admins possess global clearance to read and audit all system state transitions, inter-departmental handoffs, and messaging logs.
+  * System Admins are restricted to the dedicated `/api/admin/*` endpoints by `JwtAuthGuard` and `AdminGuard`; employees and agents receive `403` responses there. The admin ticket update is the deliberate exception to adjacent lifecycle transitions.
+
+* **Audit-log gap:** No audit log or change-history feature is implemented yet. Admin global visibility and editing do not create a historical record of changes; this remains explicitly out of scope for the current phase.
 
 ## 3. Storage
 * **Relational / Document Reasoning:** Prisma manages a local SQLite database for `Users`, `Tickets`, `DepartmentQueues`, and `Attachments`. The relational model enforces foreign key constraints and preserves transactional state changes. Comments remain specified but are not implemented.
@@ -37,7 +40,7 @@
 * **Durable vs. Derived Data:** Core properties such as user identity, ticket creation timestamps, attachment metadata, and final status are durable in SQLite, whereas queue sort order based on priority is dynamically evaluated.
 
 ## 4. Access
-* **Important Queries & Access Patterns:** 
+* **Important Queries & Access Patterns:**
   * *Agent Dashboard Query:* Fetch all tickets matching an agent's specific department queue, ordered by priority and recency.
   * *Employee History Query:* Fetch all tickets where `user_id` matches the authenticated session user (`user_id == current_user_id`).
   * *Admin Global Audit Query:* Fetch all system tickets, department routing paths, and communication threads across all departments for monitoring and escalation.

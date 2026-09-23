@@ -4,20 +4,20 @@ Employees across different departments lack a unified system to request and trac
 # Actors / Stakeholders
 - **Employee:** Selects standardized request templates, fills out mandatory structured fields, assigns priority levels, tracks clear process states across departments, and downloads completed deliverables.
 - **Department Agent (IT, HR, Finance):** Triages, reviews clean structured data presentations, updates ticket states, and manages incoming requests within their specific department queue.
-- **System Admin:** Manages user roles, permissions, security access control, and overall system configuration.
+- **System Admin:** Manages user roles, permissions, security access control, and overall system configuration. In the implemented service, System Admins use the guarded `GET /api/admin/tickets` and `PATCH /api/admin/tickets/:id` endpoints for global ticket visibility and editing across departments, including validated queue and priority changes and a deliberate any-state override across the five real lifecycle states. The guarded `GET /api/admin/users` and `PATCH /api/admin/users/:id` endpoints list users using the password-free projection and update supported roles and departments.
 
 # Known Facts
 - The system must handle service requests across at least three core internal departments: IT, HR, and Finance.
 - The output of this phase is strictly a specification draft in a single Markdown file (`product-spec.md`). No implementation, code, or databases are built yet.
 
 # Functional Requirements
-- **Standardized Request Workflows & Forms:** 
+- **Standardized Request Workflows & Forms:**
   - The system must use strictly pre-configured form templates for frequent internal requests (e.g., *IT Equipment Replacement*, *Employment Verification Letter*, *Attendance/Leave Adjustment*) rather than open text blocks.
   - Each template must enforce mandatory structured fields (e.g., calendar date pickers, asset tags, specific category selections) to guarantee that zero data is missing upfront and eliminate back-and-forth emails.
 - **AI-Assisted Request Intake:** Employees may describe an issue in free text and receive a structured suggestion containing a title, description, department queue, and priority to review before submission. The AI is advisory only: it never creates a ticket directly, and all existing validation and RBAC rules apply identically whether a ticket originated from manual entry or an AI suggestion.
-- **Structured Data Presentation:** 
+- **Structured Data Presentation:**
   - Because submissions rely on strict standardized fields, the system must present the incoming data to department agents in a clean, organized key-value layout for rapid review.
-- **Priority & Expectation Management:** 
+- **Priority & Expectation Management:**
   - Employees must be able to assign a priority level (*Low*, *Medium*, *High*, *Urgent*) to highlight critical operational needs.
   - The system must display an expected resolution timeline (SLA) upon submission so the employee knows when to expect a response.
 - **Department State Transparency & Routing:**
@@ -43,7 +43,7 @@ Employees across different departments lack a unified system to request and trac
 - No implementation of frontend code, backend server logic, database tables, or Git repository setups during this phase.
 
 # Acceptance Criteria
-- **Scenario 1 (Happy Path - Standardized Form & State Transparency):** 
+- **Scenario 1 (Happy Path - Standardized Form & State Transparency):**
   An authenticated employee selects the *Employment Verification Letter* template, fills out all mandatory structured fields without missing data, and assigns a *Medium* priority $\rightarrow$ The structured ticket is created and lands in the HR queue with an estimated SLA $\rightarrow$ HR reviews the clean structured layout, processes the document, and digitally routes it to Finance for approval $\rightarrow$ The employee views their dashboard, seeing the clear state indicator update from *Current Department: HR* to *Current Department: Finance* until it resolves successfully.
-- **Scenario 2 (Sad Path - Security & Failure Cases):** 
+- **Scenario 2 (Sad Path - Security & Failure Cases):**
   A standard employee attempts to tamper with a URL ID to view another private employee's compensation request $\rightarrow$ The system's Role-Based Access Control (RBAC) intercepts the violation and triggers a clean error page (*"403 Unauthorized"*). Concurrently, if a database timeout occurs mid-submission, the application catches the exception, preserves user input, and displays: *"Unable to process request at this time. Please try again later."*
