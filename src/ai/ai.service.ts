@@ -45,6 +45,7 @@ export class AiService {
       }
 
       if (error instanceof AiProviderUnavailableError) {
+        console.error('[AI] Provider unavailable:', error.message);
         return { success: false, reason: 'provider_unavailable' };
       }
 

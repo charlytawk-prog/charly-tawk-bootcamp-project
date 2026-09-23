@@ -23,6 +23,7 @@
   "description": "",
   "dependencies": {
     "@nestjs/common": "^11.2.3",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.2.3",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/platform-express": "^11.2.3",
