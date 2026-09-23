@@ -75,14 +75,14 @@ Empty input or a provider suggestion that reaches the service but fails its serv
 
 `npm run eval:ai` runs six cases. The first four use the real Groq provider and the real queue catalog from SQLite. The final two build Nest test modules with `FakeAiProvider` overrides.
 
-1. **`clear-input-it`** sends a laptop/Wi-Fi issue and proves the returned queue ID is in the real catalog and the priority is in the real enum. The refreshed run passed and returned `queue-1` with `Medium`.
-2. **`thin-input-valid`** sends the single word `help` and proves that, when Groq returns a suggestion, its queue and priority are bounded. The refreshed run passed with a valid `queue-1` / `Medium` suggestion. On other runs, this input has produced a graceful `invalid_ai_output` result because one word may be too vague to grade; the eval explicitly accepts either valid structured output or that graceful invalid-output fallback.
+1. **`clear-input-it`** sends a laptop/Wi‑Fi issue and proves the returned queue ID is in the real catalog and the priority is in the real enum. The refreshed run passed and returned `queue-1` with `Medium`.
+2. **`thin-input-valid`** sends the single word `help` and proves that, when Groq returns a suggestion, its queue and priority are bounded. The eval accepts either a valid structured suggestion or the graceful `invalid_ai_output` fallback for a too-vague single-word prompt.
 3. **`ambiguous-input-valid`** sends `my expense report software is broken` and proves the returned queue and priority are valid without asserting a particular choice. The refreshed run passed with `queue-2` and `Medium`.
-4. **`bounded-context-proof`** makes fresh live calls for the three samples rather than reusing cases 1-3. Each sample is retried once for the recognized transient/invalid-JSON failure class, then the case hard-fails if the call still fails. Every resulting entry must be non-null and must have a queue ID in the real catalog; null or out-of-scope entries are not silently filtered. The refreshed run passed with all three entries present and catalog-bounded.
+4. **`bounded-context-proof`** makes fresh live calls for the reliable catalog-bound samples only; the vague single-word input is intentionally excluded because it is already covered by the graceful-fallback test in case 2. Each sampled suggestion is retried once for the recognized transient/invalid-JSON failure class, then the case hard-fails if the call still fails. Every resulting entry must be non-null and must have a queue ID in the real catalog; null or out-of-scope entries are not silently filtered. The refreshed run passed with all entries present and catalog-bounded.
 5. **`invalid-output-fails-gracefully`** overrides the provider with `FakeAiProvider('invalid-output')` and proves the endpoint returns `{ "success": false, "reason": "invalid_ai_output" }`. It passed.
 6. **`provider-failure-fails-gracefully`** overrides the provider with `FakeAiProvider('provider-failure')` and proves the endpoint returns `{ "success": false, "reason": "provider_unavailable" }`. It passed.
 
-The refreshed real eval completed with all six cases passing. `npm test -- --runInBand` also passed unchanged: 4 suites and 27 tests.
+The refreshed real eval completed with all six cases passing. `npm test -- --runInBand` also passed: 4 suites and 28 tests.
 
 ## Graceful degradation
 

@@ -89,7 +89,9 @@ export class GroqAiProvider implements AiProvider {
       }
 
       if (error instanceof TypeError) {
-        throw new AiProviderUnavailableError(`Groq request failed: ${error.message}`);
+        const cause = (error as TypeError & { cause?: unknown }).cause;
+        const causeMessage = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause ?? 'unknown cause');
+        throw new AiProviderUnavailableError(`Groq request failed: ${error.message} (${causeMessage})`);
       }
 
       throw new AiOutputInvalidError('AI output was not valid JSON.');

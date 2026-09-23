@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { QueuesModule } from './queues/queues.module';
@@ -8,7 +9,15 @@ import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
 
 @Module({
-  imports: [PrismaModule, AuthModule, TicketsModule, UsersModule, QueuesModule, AiModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    AuthModule,
+    TicketsModule,
+    UsersModule,
+    QueuesModule,
+    AiModule,
+  ],
   controllers: [AppController],
 })
 export class AppModule {}

@@ -41,46 +41,60 @@ Install:
 
 No external database or Docker is required. A Groq account and API key are optional for AI-assisted intake; manual ticket creation does not require them.
 
-## Install
+## Install and run
 
-From a fresh clone, run these commands from the repository root:
+Use this sequence from a fresh clone.
 
 ```sh
 git clone https://github.com/charlytawk-prog/charly-tawk-bootcamp-project.git
 cd charly-tawk-bootcamp-project
 npm install
-npx prisma migrate deploy
-npm run prisma:seed
-```
-
-Install the frontend dependencies in a second shell, or after the root commands finish:
-
-```sh
 cd frontend
 npm install
 cd ..
 ```
 
-`npx prisma migrate deploy` applies the committed migrations in `prisma/migrations/`. `npm run prisma:seed` creates the demo users, IT/Finance/HR queues, and sample tickets. The local SQLite connection is configured in `.env` as `file:./dev.db`.
+Set up the root `.env` file before starting the app. The app runs completely normally without a Groq API key; the AI assist simply will not work until `GROQ_API_KEY` is configured. For live AI suggestions, add:
 
-## Run
-
-Start the backend from the repository root:
-
-```sh
-npm run dev
+```dotenv
+GROQ_API_KEY=your-groq-api-key
 ```
 
-The NestJS API listens on `http://localhost:5000` by default. The port comes from `PORT=5000` in `.env`.
+Then apply the schema and seed the demo data:
 
-In a second shell, start the frontend:
+```sh
+npx prisma migrate deploy
+npm run prisma:seed
+```
+
+Start the backend in one terminal:
+
+```sh
+npm run start:dev
+```
+
+Then start the frontend in a second terminal:
 
 ```sh
 cd frontend
 npm run dev
 ```
 
-Open `http://localhost:5173`. Vite is configured to proxy `/api` requests to `http://localhost:5000`.
+Confirm the app is healthy before trying AI features: open `http://localhost:5173/login`, log in with `alice@example.com` and `password123`, and verify the Employee dashboard loads normally. After that, use the AI suggestion flow in the Employee workspace.
+
+If every request including login fails with 502, the backend process isn't running or failed to start — check its terminal output directly.
+
+### Other run commands
+
+Run these from the repository root:
+
+```sh
+npm run build       # Compile the backend
+npm start           # Start the compiled backend
+npm run start:prod  # Run dist/main.js
+npm test            # Run the test suite
+npm run eval:ai     # Run the real Groq evaluation; no key means the app still boots, but AI suggestions will be unavailable
+```
 
 ## Exercise the flow
 
