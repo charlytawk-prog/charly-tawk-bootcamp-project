@@ -17,7 +17,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
         return {
           secret,
-          signOptions: { expiresIn: '1h' },
+          signOptions: { expiresIn: '4h' },
         };
       },
     }),
