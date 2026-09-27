@@ -223,4 +223,19 @@ The main ticket flow is in `src/tickets/`; the Prisma client provider is in `src
 - **Node is older than 18:** Install a current Node.js LTS release, open a new shell, verify with `node --version`, and rerun the install commands.
 - **The browser shows connection refused:** Start the backend with `npm run dev` and the frontend with `cd frontend` followed by `npm run dev`.
 
+**Prisma commands fail on Windows with a P1000 error against Docker Postgres**
+
+Problem: Running Prisma CLI commands directly on Windows (outside a container) against the Dockerized Postgres instance can fail with a P1000 authentication error, even when the credentials in `.env` are correct.
+
+Cause: This is a Windows-to-Docker-Desktop networking quirk, not a real authentication failure.
+
+Fix: Always run Prisma commands through the backend container instead of running them directly on Windows:
+
+```sh
+docker compose run --rm --entrypoint npx backend prisma migrate dev
+docker compose run --rm --entrypoint npx backend prisma migrate deploy
+docker compose run --rm --entrypoint npx backend prisma db seed
+docker compose run --rm --entrypoint npx backend prisma studio
+```
+
 To stop either development server, focus its terminal and press `Ctrl+C`.
