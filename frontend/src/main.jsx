@@ -1,9 +1,10 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from './api-config';
 import './styles.css';
 
-const API_BASE = '/api';
+const API_BASE = `${API_BASE_URL}/api`;
 const TOKEN_KEY = 'iosh_token';
 
 function decodeToken(token) {

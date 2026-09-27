@@ -145,10 +145,13 @@ The eval checks real Groq suggestions against the real queue catalog and priorit
 
 ## Tests
 
-From the repository root:
+From the repository root, run the suite in the Dockerfile's test stage so it can reach the `ops_hub_test` database in the Compose Postgres service. Ensure `.env` sets `TEST_DATABASE_URL` to use the Compose hostname `postgres` and database `ops_hub_test`.
 
 ```sh
-npm test
+docker compose up -d postgres
+docker build --target test -t charly-tawk-bootcamp-project-test .
+docker run --rm --network charly-tawk-bootcamp-project_default --env-file .env -e "DATABASE_URL=postgresql://ops_hub:ops_hub_local@postgres:5432/ops_hub_test?schema=public" charly-tawk-bootcamp-project-test npx prisma migrate deploy
+docker run --rm --network charly-tawk-bootcamp-project_default --env-file .env charly-tawk-bootcamp-project-test
 ```
 
 Expected passing output includes:
@@ -158,7 +161,7 @@ Test Suites: 5 passed, 5 total
 Tests:       38 passed, 38 total
 ```
 
-The suite covers authentication, JWT verification, the complete five-state lifecycle, real SQLite persistence and foreign-key reference validation, personal ticket history, HTTP ownership authorization, department queue scoping, guarded agent status updates, lifecycle regression behavior, and the AI provider contract and graceful failure outcomes.
+The suite covers authentication, JWT verification, the complete five-state lifecycle, real PostgreSQL persistence and foreign-key reference validation, personal ticket history, HTTP ownership authorization, department queue scoping, guarded agent status updates, lifecycle regression behavior, and the AI provider contract and graceful failure outcomes.
 
 ## Project structure
 
