@@ -159,5 +159,5 @@ Latest run: the first six checks passed, but the Netlify `/employee` deep-link c
 - Audit log and ticket comments are not built.
 - Attachment bytes are stored on the container filesystem in `uploads/`; survival across redeploy has not been tested.
 - [PENDING: run the README from a fresh clone].
-- [PENDING: verify attachment persistence across a Railway redeploy].
+- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (railway up) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (uploads/), which Railway does not preserve across redeploys. Ticket data in Postgres is unaffected and persists correctly across redeploys. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
 │   ├── index.html

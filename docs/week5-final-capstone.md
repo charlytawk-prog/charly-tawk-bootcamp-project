@@ -44,7 +44,7 @@ The live health response currently reports `commit: "unknown"`.
 - [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
 - The release-gate command is implemented as `npm run release-gate`; a GO result requires all four checks to pass, including a clean worktree.
 - `npm run smoke` performs seven live read-only checks: health, Alice login, authenticated ticket history, Alice's denied admin-users request, unauthenticated ticket-history denial, Netlify root, and the `/employee` deep link. GO means all expected results pass; NO-GO means at least one fails. The latest run passed the first six checks but failed the deep-link check, so that behavior is not verified as passing.
-- [PENDING: verify attachment-file persistence across a Railway redeploy].
+- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (railway up) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (uploads/), which Railway does not preserve across redeploys. Ticket data in Postgres is unaffected and persists correctly across redeploys. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
 - [PENDING: run the README from a fresh clone].
 
 ## Remaining risks
