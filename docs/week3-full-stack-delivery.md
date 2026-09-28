@@ -1,3 +1,5 @@
+Status: point-in-time evidence for Week 3. Superseded later by Week 5 PostgreSQL storage and deployment. See docs/week5-final-capstone.md.
+
 # Week 3: Full-Stack Delivery
 
 ## The flow

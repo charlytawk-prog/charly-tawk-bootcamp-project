@@ -1,3 +1,5 @@
+Status: point-in-time evidence for Week 2. Superseded later by the NestJS full-stack delivery and Week 5 PostgreSQL deployment. See docs/week5-final-capstone.md.
+
 # Week 2 Agentic Workflow
 
 ## Understand

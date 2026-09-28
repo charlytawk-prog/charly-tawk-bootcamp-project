@@ -13,6 +13,9 @@ The admin status update is a deliberate exception to the normal lifecycle rule: 
 ## User management
 
 - `GET /api/admin/users` returns the safe user projection: `id`, `name`, `email`, `role`, and `department`.
+- `POST /api/admin/users` creates an Employee from `name`, `email`, and `password`. Name must be non-empty, email must be valid, and password must contain at least eight characters. Duplicate email returns `409`. The server sets `role` to `Employee` and `department` to `null`; role or department fields in the request are rejected. Passwords are hashed and never returned.
 - `PATCH /api/admin/users/:id` updates `role` and/or `department` using the supported role and department values. Passwords are never returned.
+
+The former public `POST /api/users` route was removed; the profile `GET /api/users/:id` route remains available.
 
 No audit log or change-history feature is included in this phase.
