@@ -110,6 +110,8 @@ textarea { min-height: 116px; resize: vertical; }
 .queue-item strong { color: #1c5b4c; font-family: 'Space Grotesk', sans-serif; }
 .queue-item span:not(.badge) { color: #52625a; font-size: .9rem; }
 .admin-panel { margin-bottom: 22px; max-width: 1120px; }
+.admin-panel[aria-labelledby="admin-users-heading"] .ticket-sort-bar { margin: 22px 0 12px; }
+.admin-panel[aria-labelledby="admin-users-heading"] .ticket-sort-field > span { display: block; margin-bottom: 7px; }
 .admin-filter-grid { align-items: end; display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; margin-bottom: 22px; }
 .admin-filter-grid .field { margin: 0; }
 .admin-edit-grid { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }

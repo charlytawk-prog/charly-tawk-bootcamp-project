@@ -146,11 +146,75 @@ describe('System Admin capabilities', () => {
       .expect(400);
   });
 
+  it('lets an admin create an employee who can log in', async () => {
+    const headers = await login('charlie@example.com');
+    const password = 'temporary-password-1';
+    const created = await request(app.getHttpServer())
+      .post('/api/admin/users')
+      .set(headers)
+      .send({ name: 'New Employee', email: 'new.employee@example.com', password })
+      .expect(201);
+
+    expect(created.body).toMatchObject({
+      id: expect.stringMatching(/^user-\d+$/),
+      name: 'New Employee',
+      email: 'new.employee@example.com',
+      role: 'Employee',
+      department: null,
+    });
+    expect(created.body).not.toHaveProperty('password');
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: created.body.email, password })
+      .expect(200);
+  });
+
+  it.each([
+    ['role', { role: 'System Admin' }],
+    ['department', { department: 'IT' }],
+  ])('rejects a requested %s when creating an employee', async (_field, extraField) => {
+    const headers = await login('charlie@example.com');
+    const response = await request(app.getHttpServer())
+      .post('/api/admin/users')
+      .set(headers)
+      .send({ name: 'Rejected User', email: 'rejected@example.com', password: 'temporary-password-1', ...extraField })
+      .expect(400);
+
+    expect(response.body.error).toContain(_field);
+    expect(await app.get(PrismaService).user.findFirst({ where: { email: 'rejected@example.com' } })).toBeNull();
+  });
+
+  it('returns 409 when an admin creates a duplicate email', async () => {
+    const headers = await login('charlie@example.com');
+    const response = await request(app.getHttpServer())
+      .post('/api/admin/users')
+      .set(headers)
+      .send({ name: 'Duplicate User', email: 'alice@example.com', password: 'temporary-password-1' })
+      .expect(409);
+
+    expect(response.body.error).toContain('Email address already exists');
+  });
+
+  it.each([
+    [{ name: ' ', email: 'valid@example.com', password: 'temporary-password-1' }],
+    [{ name: 'Valid Name', email: 'invalid-email', password: 'temporary-password-1' }],
+    [{ name: 'Valid Name', email: 'valid@example.com', password: 'short' }],
+  ])('rejects invalid employee details', async (body) => {
+    const headers = await login('charlie@example.com');
+    await request(app.getHttpServer())
+      .post('/api/admin/users')
+      .set(headers)
+      .send(body)
+      .expect(400);
+  });
+
   it('returns 403 when an employee accesses user-management endpoints', async () => {
     const headers = await login('alice@example.com');
 
     await request(app.getHttpServer()).get('/api/admin/users').set(headers).expect(403);
     await request(app.getHttpServer()).patch('/api/admin/users/user-1').set(headers).send({ role: 'Department Agent' }).expect(403);
+    await request(app.getHttpServer()).post('/api/admin/users').set(headers).send({}).expect(403);
   });
 
   it('returns 403 when an agent accesses user-management endpoints', async () => {
@@ -158,5 +222,13 @@ describe('System Admin capabilities', () => {
 
     await request(app.getHttpServer()).get('/api/admin/users').set(headers).expect(403);
     await request(app.getHttpServer()).patch('/api/admin/users/user-1').set(headers).send({ role: 'Employee' }).expect(403);
+    await request(app.getHttpServer()).post('/api/admin/users').set(headers).send({}).expect(403);
+  });
+
+  it('returns 401 when a request without a token tries to create an employee', async () => {
+    await request(app.getHttpServer())
+      .post('/api/admin/users')
+      .send({ name: 'Unauthenticated', email: 'unauthenticated@example.com', password: 'temporary-password-1' })
+      .expect(401);
   });
 });

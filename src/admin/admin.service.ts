@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { VALID_TICKET_PRIORITIES } from '../ai/ai-provider.interface';
 
 const TICKET_STATUSES = ['Submitted', 'Pending Review', 'Routed', 'In Progress', 'Resolved'] as const;
 const USER_ROLES = ['Employee', 'Department Agent', 'System Admin'] as const;
 const DEPARTMENTS = ['IT', 'HR', 'Finance'] as const;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Injectable()
 export class AdminService {
@@ -65,6 +67,41 @@ export class AdminService {
     return this.prisma.user.findMany({
       select: { id: true, name: true, email: true, role: true, department: true },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  async createEmployee(body: CreateEmployeeBody) {
+    const allowedFields = new Set(['name', 'email', 'password']);
+    const unsupportedFields = Object.keys(body ?? {}).filter((field) => !allowedFields.has(field));
+    if (unsupportedFields.length) {
+      throw new BadRequestException({ error: `Unsupported fields: ${unsupportedFields.join(', ')}` });
+    }
+    if (typeof body?.name !== 'string' || !body.name.trim()) {
+      throw new BadRequestException({ error: 'Name is required' });
+    }
+    if (typeof body.email !== 'string' || !EMAIL_PATTERN.test(body.email.trim())) {
+      throw new BadRequestException({ error: 'A valid email is required' });
+    }
+    if (typeof body.password !== 'string' || body.password.length < 8) {
+      throw new BadRequestException({ error: 'Password must be at least 8 characters' });
+    }
+
+    const email = body.email.trim();
+    const existingUser = await this.prisma.user.findFirst({ where: { email } });
+    if (existingUser) {
+      throw new ConflictException({ error: 'Email address already exists' });
+    }
+
+    return this.prisma.user.create({
+      data: {
+        id: `user-${Date.now()}`,
+        name: body.name.trim(),
+        email,
+        role: 'Employee',
+        department: null,
+        password: await bcrypt.hash(body.password, 10),
+      },
+      select: { id: true, name: true, email: true, role: true, department: true },
     });
   }
 
@@ -137,4 +174,10 @@ interface AdminTicketUpdate {
 interface AdminUserUpdate {
   role?: string;
   department?: string | null;
+}
+
+interface CreateEmployeeBody {
+  name?: string;
+  email?: string;
+  password?: string;
 }

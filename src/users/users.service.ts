@@ -1,5 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -25,27 +24,4 @@ export class UsersService {
 		return user;
 	}
 
-	async createUser(body: CreateUserBody) {
-		if (!body.name || !body.email || !body.password) {
-			throw new BadRequestException({ error: 'Name, email, and password are required' });
-		}
-
-		return this.prisma.user.create({
-			data: {
-				id: `user-${Date.now()}`,
-				name: body.name,
-				email: body.email,
-				role: body.role || 'Employee',
-				password: await bcrypt.hash(body.password, 10),
-			},
-			select: { id: true, name: true, email: true, role: true, department: true },
-		});
-	}
-}
-
-interface CreateUserBody {
-	name?: string;
-	email?: string;
-	role?: string;
-	password?: string;
 }

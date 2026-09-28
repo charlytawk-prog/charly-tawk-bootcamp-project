@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
@@ -23,6 +23,11 @@ export class AdminController {
     return this.adminService.getUsers();
   }
 
+  @Post('users')
+  createEmployee(@Body() body: CreateEmployeeBody) {
+    return this.adminService.createEmployee(body);
+  }
+
   @Patch('users/:id')
   updateUser(@Param('id') id: string, @Body() body: AdminUserUpdateBody) {
     return this.adminService.updateUser(id, body);
@@ -44,4 +49,10 @@ interface AdminTicketUpdateBody {
 interface AdminUserUpdateBody {
   role?: string;
   department?: string | null;
+}
+
+interface CreateEmployeeBody {
+  name?: string;
+  email?: string;
+  password?: string;
 }
