@@ -13,7 +13,8 @@
     "prisma:seed": "prisma db seed",
     "test": "jest --runInBand",
     "eval:ai": "node -r ts-node/register -r dotenv/config test/ai-eval.ts",
-    "release-gate": "node scripts/release-gate.js"
+    "release-gate": "node scripts/release-gate.js",
+    "smoke": "node scripts/smoke.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

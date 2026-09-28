@@ -133,6 +133,12 @@ Netlify builds from GitHub `main`, with base directory `frontend`, publish direc
 
 Release identity: Railway currently reports `commit: "unknown"`. [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
 
+### Live smoke check
+
+Run `npm run smoke` for seven live, read-only checks: API health; Alice login; authenticated `/api/tickets/mine` returns an array; Alice receives 403 from `/api/admin/users`; unauthenticated `/api/tickets/mine` returns 401; the Netlify root returns 200; and `/employee` returns 200 as a deep link. `SMOKE_API_URL` and `SMOKE_WEB_URL` override the default production base URLs. `SMOKE: GO` means all seven checks returned their expected results; `SMOKE: NO-GO` means at least one did not. The script prints health version, commit, and time, but never credentials or tokens.
+
+Latest run: the first six checks passed, but the Netlify `/employee` deep-link check failed. Do not treat deep-link handling as passing until it is corrected and the smoke check passes.
+
 ## Evidence Map
 
 | Week | Evidence | What it records | Reproduction / review |
@@ -152,8 +158,6 @@ Release identity: Railway currently reports `commit: "unknown"`. [PENDING: captu
 - Railway is on a Limited Trial plan; availability lasts only while credit remains.
 - Audit log and ticket comments are not built.
 - Attachment bytes are stored on the container filesystem in `uploads/`; survival across redeploy has not been tested.
-- [PENDING: verify a logged-out deep link to `/employee` on Netlify].
 - [PENDING: run the README from a fresh clone].
-- [PENDING: smoke script is not implemented or verified].
 - [PENDING: verify attachment persistence across a Railway redeploy].
 │   ├── index.html

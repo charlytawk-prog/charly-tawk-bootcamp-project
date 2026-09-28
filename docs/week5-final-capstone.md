@@ -43,8 +43,7 @@ The live health response currently reports `commit: "unknown"`.
 
 - [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
 - The release-gate command is implemented as `npm run release-gate`; a GO result requires all four checks to pass, including a clean worktree.
-- [PENDING: smoke script is not implemented or verified].
-- [PENDING: verify a logged-out `/employee` deep link on Netlify].
+- `npm run smoke` performs seven live read-only checks: health, Alice login, authenticated ticket history, Alice's denied admin-users request, unauthenticated ticket-history denial, Netlify root, and the `/employee` deep link. GO means all expected results pass; NO-GO means at least one fails. The latest run passed the first six checks but failed the deep-link check, so that behavior is not verified as passing.
 - [PENDING: verify attachment-file persistence across a Railway redeploy].
 - [PENDING: run the README from a fresh clone].
 
