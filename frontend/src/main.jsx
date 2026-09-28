@@ -282,7 +282,7 @@ function Shell({ account, onLogout, children }) {
 
 function LoginPage({ onLogin, message }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: 'alice@example.com', password: 'password123' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState(message ?? null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -329,6 +329,14 @@ function LoginPage({ onLogin, message }) {
           <Field label="Password" name="password" type="password" value={form.password} onChange={updateField} required />
           <button type="submit" disabled={isLoggingIn}>{isLoggingIn ? 'Checking...' : 'Log in'}</button>
         </form>
+        <div className="ai-assist">
+          <h3>Demo access</h3>
+          <dl className="ticket-details">
+            <div><dt>Employee</dt><dd>alice@example.com<br />Password: password123</dd></div>
+            <div><dt>Department Agent</dt><dd>bob@example.com, helen@example.com, frank@example.com<br />Password: password123</dd></div>
+            <div><dt>System Admin</dt><dd>charlie@example.com<br />Password: password123</dd></div>
+          </dl>
+        </div>
         {error && <div className="result result-error"><p className="result-label">Login failed</p><p>{error}</p></div>}
       </section>
     </main>
