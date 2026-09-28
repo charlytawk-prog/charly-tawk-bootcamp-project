@@ -42,7 +42,7 @@ The documented Dockerfile test-stage workflow against `ops_hub_test` passed with
 The live health response currently reports `commit: "unknown"`.
 
 - [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
-- [PENDING: release-gate command is not implemented or verified].
+- The release-gate command is implemented as `npm run release-gate`; a GO result requires all four checks to pass, including a clean worktree.
 - [PENDING: smoke script is not implemented or verified].
 - [PENDING: verify a logged-out `/employee` deep link on Netlify].
 - [PENDING: verify attachment-file persistence across a Railway redeploy].

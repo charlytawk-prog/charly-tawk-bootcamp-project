@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "test": "jest --runInBand",
-    "eval:ai": "node -r ts-node/register -r dotenv/config test/ai-eval.ts"
+    "eval:ai": "node -r ts-node/register -r dotenv/config test/ai-eval.ts",
+    "release-gate": "node scripts/release-gate.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

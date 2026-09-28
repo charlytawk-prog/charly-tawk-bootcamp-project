@@ -88,6 +88,12 @@ docker run --rm --network charly-tawk-bootcamp-project_default --env-file .env c
 
 Verified passing output: `Test Suites: 6 passed, 6 total`; `Tests: 48 passed, 48 total`.
 
+### Release gate
+
+Run `npm run release-gate` from the repository root. It stops at the first failure and runs, in order: backend build, frontend build, the README Dockerfile test workflow against `ops_hub_test`, and a clean `git status --short` check. `RELEASE GATE: GO` means all four checks passed; `RELEASE GATE: NO-GO` means a check failed. The gate also prints the current HEAD SHA and run time. Commit the intended changes before running it when a clean-tree result is required.
+
+The AI evaluation is a separate optional command: `npm run eval:ai`. It requires `GROQ_API_KEY` and network access; output varies between runs.
+
 ### Windows Prisma P1000 note
 
 Running Prisma CLI commands directly on Windows against Docker Postgres can fail with P1000 even when `.env` is configured. Run Prisma commands through the Compose backend container instead:
@@ -148,7 +154,6 @@ Release identity: Railway currently reports `commit: "unknown"`. [PENDING: captu
 - Attachment bytes are stored on the container filesystem in `uploads/`; survival across redeploy has not been tested.
 - [PENDING: verify a logged-out deep link to `/employee` on Netlify].
 - [PENDING: run the README from a fresh clone].
-- [PENDING: release-gate command is not implemented or verified].
 - [PENDING: smoke script is not implemented or verified].
 - [PENDING: verify attachment persistence across a Railway redeploy].
 │   ├── index.html
