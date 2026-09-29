@@ -41,7 +41,7 @@ export class TicketsService {
 	}
 
 	getTicketById(id: string) {
-		return this.prisma.ticket.findUnique({ where: { id }, include: this.ticketRelations }).then((ticket) => {
+		return this.prisma.ticket.findUnique({ where: { id }, include: this.ticketRelations }).then((ticket: any) => {
 			if (!ticket) {
 				throw new NotFoundException({ error: 'Ticket not found' });
 			}

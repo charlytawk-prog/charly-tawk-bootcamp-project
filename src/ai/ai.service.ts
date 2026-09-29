@@ -28,7 +28,7 @@ export class AiService {
     }
 
     const validQueues = await this.queuesService.getAllQueues();
-    const context: QueueContext[] = validQueues.map((queue) => ({
+    const context: QueueContext[] = validQueues.map((queue: any) => ({
       id: queue.id,
       name: queue.name,
       department: queue.department,
