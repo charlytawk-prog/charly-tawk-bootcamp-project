@@ -113,7 +113,17 @@ Run `npm run release-gate` from the repository root. It stops at the first failu
 Latest code verification: `RELEASE GATE: GO` at commit `2b5da21` (48 of 48 tests passing).
 
 The AI evaluation is a separate optional command: `npm run eval:ai`. It requires `GROQ_API_KEY` and network access; output varies between runs.
+### API collection (Postman)
 
+A supplementary Postman collection is in `postman/collections/ops-hub.postman_collection.json`, with `Ops Hub - Live` and `Ops Hub - Local` environments in `postman/environments/`. Login requests save their tokens automatically, and every request has built-in tests: health, login for each role, wrong password rejected (401), employee ticket history, no token rejected (401), Employee and Department Agent denied admin routes (403), and admin user listing without password hashes. The live UI remains the product; the collection supplements it.
+
+Run it from the repository root without installing anything:
+
+```sh
+npx --yes newman run postman/collections/ops-hub.postman_collection.json -e postman/environments/ops-hub-live.postman_environment.json
+```
+
+Use `ops-hub-local.postman_environment.json` instead to target the local backend on port 5000. Latest live run: 10 requests, 19 assertions, 0 failures.
 ### Fresh-clone verification
 
 On 2026-09-29 this README was followed from a fresh clone in a separate folder. The first attempt skipped `npm install` and the `.env` step and ran some commands one directory level too high; the setup instructions above were clarified as a result. A careful second pass exposed two TypeScript compile errors (implicit `any` parameters in `ai.service.ts` and `tickets.service.ts`) that stale build output had masked in the original working copy. Both were fixed in commit `2b5da21`, redeployed, and verified by the release gate (GO), the live smoke check (GO, 7 of 7), and a clean `npm run build` after pulling the fix back into the same fresh clone.
