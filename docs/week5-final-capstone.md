@@ -35,17 +35,16 @@ The captured local backend log tail showed Nest route registrations, including `
 - Live endpoints: [Netlify frontend](https://celebrated-medovik-966052.netlify.app), [Railway backend](https://charly-tawk-bootcamp-project-production.up.railway.app), [health endpoint](https://charly-tawk-bootcamp-project-production.up.railway.app/api/health).
 - The Railway plan is a Limited Trial; the live backend remains available only while credit remains.
 
-## Verification and pending release checks
+## Verification and release checks
 
 The documented Dockerfile test-stage workflow against `ops_hub_test` passed with 6 suites and 48 tests. The health endpoint tests mock the Prisma query to verify HTTP 200 and 503 responses; the actual local database stop/start sequence above was verified by hand. The suite also covers authentication/JWT, ticket ownership and department scope, ticket lifecycle, admin employee creation, and the AI provider contract.
 
-The live health response currently reports `commit: "unknown"`.
-
-- [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
-- The release-gate command is implemented as `npm run release-gate`; a GO result requires all four checks to pass, including a clean worktree.
-- `npm run smoke` performs seven live read-only checks: health, Alice login, authenticated ticket history, Alice's denied admin-users request, unauthenticated ticket-history denial, Netlify root, and the `/employee` deep link. GO means all expected results pass; NO-GO means at least one fails. The latest run passed the first six checks but failed the deep-link check, so that behavior is not verified as passing.
-- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (railway up) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (uploads/), which Railway does not preserve across redeploys. Ticket data in Postgres is unaffected and persists correctly across redeploys. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
-- [PENDING: run the README from a fresh clone].
+- Release gate: `npm run release-gate` runs the backend build, frontend build, container test workflow, and a clean-worktree check. Latest result: `RELEASE GATE: GO` at commit `2b5da21`, with 48 of 48 tests passing.
+- Live smoke check: `npm run smoke` performs seven live read-only checks: health, Alice login, authenticated ticket history, Alice's denied admin-users request, unauthenticated ticket-history denial, Netlify root, and the `/employee` deep link. GO means all expected results pass; NO-GO means at least one fails. An earlier run failed the deep-link check; after the Netlify deep-link fix and the `2b5da21` redeploy, the latest run passed all seven checks: `SMOKE: GO`.
+- Release identity: because backend deploys use `railway up` rather than a GitHub-triggered build, Railway does not set `RAILWAY_GIT_COMMIT_SHA`, so `/api/health` reports `commit: "unknown"`. The submitted release is identified by git tag `v1.0.0`; the release gate also prints the HEAD SHA it verified.
+- Fresh-clone test: on 2026-09-29 the README was followed from a fresh clone in a separate folder. The first attempt skipped `npm install` and the `.env` step and ran some commands one directory level too high; the README setup steps were clarified as a result. A careful second pass exposed two TypeScript compile errors (implicit `any` parameters in `ai.service.ts` and `tickets.service.ts`) that stale build output had masked in the original working copy. Both were fixed in `2b5da21`, redeployed, verified by the release gate (GO) and smoke check (GO), and confirmed with a clean `npm run build` after pulling the fix back into the same fresh clone.
+- Live role checks: verified on 2026-09-29 from a second machine. Bob advanced a ticket in the IT queue, and Alice opening `/admin` was redirected to her Employee workspace.
+- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (`railway up`) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (`uploads/`), which Railway does not preserve across redeploys. Ticket data in Postgres persists correctly across redeploys. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
 
 ## Remaining risks
 
@@ -55,15 +54,16 @@ The live health response currently reports `commit: "unknown"`.
 - Demo credentials are public by design. Live user roles can drift because an admin can change them.
 - The live database contains test users created during verification.
 - Railway's Limited Trial credit may expire.
+- Railway GitHub auto-deploy is broken; live commit identity is not reported by `/api/health`.
 - Audit log and ticket comments are not implemented.
-- Attachment bytes remain on the container filesystem in `uploads/`; redeploy durability is unverified.
+- Attachment bytes are stored on the container filesystem in `uploads/` and are lost on redeploy (tested; see above).
 
 ## Defense answers
 
 **Allowed action:** An authenticated System Admin can create an Employee through `POST /api/admin/users`; tests verify the response excludes the password and the new credentials can log in.
 
-**Rejected action:** An Employee or Department Agent receives 403 from admin user-management routes, and a request without a token receives 401. These cases are covered by `test/admin.spec.ts`.
+**Rejected action:** An Employee or Department Agent receives 403 from admin user-management routes, and a request without a token receives 401. These cases are covered by `test/admin.spec.ts`, by the live smoke check (Alice receives 403 from `/api/admin/users`), and by the live role check (Alice is redirected away from `/admin`).
 
 **AI boundary:** AI may suggest title, description, queue, and priority. It cannot create a ticket or advance its state. The backend validates the suggestion against real queue/priority choices, and the employee reviews it before submitting through the normal flow.
 
-**Automated versus manual evidence:** The 48-test container suite includes database-backed ticket/admin/auth coverage and mocked health-query success/failure. The reported live health payload and local Postgres outage/recovery sequence were manually checked. The Netlify deep-link and attachment persistence checks remain pending.
+**Automated versus manual evidence:** The 48-test container suite includes database-backed ticket/admin/auth coverage and mocked health-query success/failure. The release gate and live smoke check are scripted and repeatable. The live health payload, the local Postgres outage/recovery sequence, the fresh-clone test, the live role checks, and the attachment redeploy test were checked manually. The Netlify deep-link check now passes in the smoke run; attachment persistence was tested and is a documented limitation.

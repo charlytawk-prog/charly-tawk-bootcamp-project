@@ -24,6 +24,8 @@ Admin users can change roles, so live roles may drift from the seeded roles show
 
 Critical journey to try: Alice signs in, requests an AI suggestion, reviews it, and creates a ticket. Bob signs in and advances a ticket in the IT queue. Alice opening `/admin` is redirected to her Employee workspace.
 
+Verified live on 2026-09-29 from a second machine: Bob advanced a ticket in the IT queue, and Alice opening `/admin` was redirected to her Employee workspace.
+
 The Railway backend is on a Limited Trial plan and stays available only while trial credit remains.
 
 ## Engineer Quick Start
@@ -36,7 +38,9 @@ The Railway backend is on a Limited Trial plan and stays available only while tr
 | Docker Desktop | Running Docker engine | `docker compose up -d postgres` |
 | Git | Installed | `git --version` |
 
-Clone and install from the repository root:
+Run all commands from the repository root unless a step says `cd frontend`.
+
+Clone and install:
 
 ```sh
 git clone https://github.com/charlytawk-prog/charly-tawk-bootcamp-project.git
@@ -47,7 +51,16 @@ npm install
 cd ..
 ```
 
-Create the root `.env` from `.env.example` and configure the variable names `DATABASE_URL`, `TEST_DATABASE_URL`, `JWT_SECRET`, and `GROQ_API_KEY`. The frontend example uses `VITE_API_URL`; leave it empty for local Vite proxy use or configure it for the deployed API. Groq is optional for ordinary manual ticket creation. Do not put secret values in documentation or source control.
+Create the environment files from the examples (do not skip this step):
+
+```sh
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+
+In PowerShell use `Copy-Item .env.example .env` and `Copy-Item frontend/.env.example frontend/.env`.
+
+In the root `.env`, configure `DATABASE_URL`, `TEST_DATABASE_URL`, `JWT_SECRET`, and `GROQ_API_KEY`. The frontend example uses `VITE_API_URL`; leave it empty for local Vite proxy use or configure it for the deployed API. Groq is optional for ordinary manual ticket creation. Do not put secret values in documentation or source control.
 
 ### Start the local app
 
@@ -59,10 +72,15 @@ docker compose run --rm --entrypoint npx backend prisma migrate deploy
 docker compose run --rm --entrypoint npx backend prisma db seed
 ```
 
-Run the backend from the repository root and the frontend from `frontend/`:
+Run the backend from the repository root:
 
 ```sh
 npm run start:dev
+```
+
+Then open a second terminal for the frontend:
+
+```sh
 cd frontend
 npm run dev
 ```
@@ -92,7 +110,13 @@ Verified passing output: `Test Suites: 6 passed, 6 total`; `Tests: 48 passed, 48
 
 Run `npm run release-gate` from the repository root. It stops at the first failure and runs, in order: backend build, frontend build, the README Dockerfile test workflow against `ops_hub_test`, and a clean `git status --short` check. `RELEASE GATE: GO` means all four checks passed; `RELEASE GATE: NO-GO` means a check failed. The gate also prints the current HEAD SHA and run time. Commit the intended changes before running it when a clean-tree result is required.
 
+Latest code verification: `RELEASE GATE: GO` at commit `2b5da21` (48 of 48 tests passing).
+
 The AI evaluation is a separate optional command: `npm run eval:ai`. It requires `GROQ_API_KEY` and network access; output varies between runs.
+
+### Fresh-clone verification
+
+On 2026-09-29 this README was followed from a fresh clone in a separate folder. The first attempt skipped `npm install` and the `.env` step and ran some commands one directory level too high; the setup instructions above were clarified as a result. A careful second pass exposed two TypeScript compile errors (implicit `any` parameters in `ai.service.ts` and `tickets.service.ts`) that stale build output had masked in the original working copy. Both were fixed in commit `2b5da21`, redeployed, and verified by the release gate (GO), the live smoke check (GO, 7 of 7), and a clean `npm run build` after pulling the fix back into the same fresh clone.
 
 ### Windows Prisma P1000 note
 
@@ -113,7 +137,7 @@ docker compose run --rm --entrypoint npx backend prisma studio
 
 For local logs, use `docker compose logs --tail 30 backend`. In the captured local tail, Nest logged route mappings including `GET /api/health` and then `Nest application successfully started`. The only explicit application-source log call is `[AI] Provider unavailable` when the AI provider fails; health-query failures are caught without logging the error or stack.
 
-For live logs, use the Railway dashboard, select the backend service, then **Deployments** and **Deploy Logs**. The live `/api/health` check returned `{"status":"ok","database":"up","version":"1.0.0","commit":"unknown","uptimeSeconds":91}`. Live commit identity is not being reported yet.
+For live logs, use the Railway dashboard, select the backend service, then **Deployments** and **Deploy Logs**. A live `/api/health` check returned `{"status":"ok","database":"up","version":"1.0.0","commit":"unknown","uptimeSeconds":91}`.
 
 ### Database outage and recovery evidence
 
@@ -131,13 +155,13 @@ Uptime continued increasing, so the backend process did not restart and required
 
 Netlify builds from GitHub `main`, with base directory `frontend`, publish directory `frontend/dist`, and the `VITE_API_URL` environment variable. The Railway backend is built from the repository-root Dockerfile and uses the variable names `DATABASE_URL`, `JWT_SECRET`, `GROQ_API_KEY`, and `FRONTEND_ORIGIN`; `DATABASE_URL` references Railway Postgres. Railway GitHub auto-deploy is currently broken, so backend deployments use `railway up` from the developer machine. Do not copy secret values into docs or logs.
 
-Release identity: Railway currently reports `commit: "unknown"`. [PENDING: capture the final commit SHA and verify live commit reporting in `/api/health`].
+Release identity: because backend deploys use `railway up` rather than a GitHub-triggered build, Railway does not set `RAILWAY_GIT_COMMIT_SHA`, so `/api/health` reports `commit: "unknown"`. The submitted release is identified by git tag `v1.0.0`; `npm run release-gate` also prints the HEAD SHA it verified.
 
 ### Live smoke check
 
 Run `npm run smoke` for seven live, read-only checks: API health; Alice login; authenticated `/api/tickets/mine` returns an array; Alice receives 403 from `/api/admin/users`; unauthenticated `/api/tickets/mine` returns 401; the Netlify root returns 200; and `/employee` returns 200 as a deep link. `SMOKE_API_URL` and `SMOKE_WEB_URL` override the default production base URLs. `SMOKE: GO` means all seven checks returned their expected results; `SMOKE: NO-GO` means at least one did not. The script prints health version, commit, and time, but never credentials or tokens.
 
-Latest run: the first six checks passed, but the Netlify `/employee` deep-link check failed. Do not treat deep-link handling as passing until it is corrected and the smoke check passes.
+Latest run (2026-09-29, after the Netlify deep-link fix and the `2b5da21` redeploy): all seven checks passed. `SMOKE: GO`.
 
 ## Evidence Map
 
@@ -147,7 +171,7 @@ Latest run: the first six checks passed, but the Netlify `/employee` deep-link c
 | 2 | [Week 2 workflow](docs/week2-agentic-workflow.md) | Point-in-time JSON/Express workflow and lifecycle rules | Current lifecycle regression coverage is in the container test suite above; the original JSON-based implementation is superseded. |
 | 3 | [Week 3 delivery](docs/week3-full-stack-delivery.md) | Point-in-time full-stack API and frontend delivery | Run the container test suite above; see the superseding storage/deployment notes in Week 5. |
 | 4 | [Week 4 authentication](docs/week4-authentication.md), [Week 4 AI](docs/week4-production-ai.md) | JWT/bcrypt authentication and advisory AI intake | Run the container test suite and, when configured, `npm run eval:ai`. |
-| 5 | [Final capstone](docs/week5-final-capstone.md) | PostgreSQL, deployment, health, admin onboarding, and operations evidence | Use the container test workflow above and the health/outage evidence in Operations. |
+| 5 | [Final capstone](docs/week5-final-capstone.md) | PostgreSQL, deployment, health, admin onboarding, operations, fresh-clone verification, and live role checks | Use the container test workflow, release gate, smoke check, and the Operations evidence above. |
 
 ## Known Limitations
 
@@ -156,8 +180,6 @@ Latest run: the first six checks passed, but the Netlify `/employee` deep-link c
 - JWTs are stored in `localStorage`; there are no refresh tokens or login rate limits.
 - Demo credentials are public by design, and the live database contains test users created during verification. Admin role changes can make live roles differ from the seed table.
 - Railway is on a Limited Trial plan; availability lasts only while credit remains.
+- Railway GitHub auto-deploy is broken; deploys use `railway up`, so `/api/health` reports `commit: "unknown"` (see Release identity).
 - Audit log and ticket comments are not built.
-- Attachment bytes are stored on the container filesystem in `uploads/`; survival across redeploy has not been tested.
-- [PENDING: run the README from a fresh clone].
-- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (railway up) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (uploads/), which Railway does not preserve across redeploys. Ticket data in Postgres is unaffected and persists correctly across redeploys. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
-│   ├── index.html
+- Attachment persistence: tested and confirmed NOT persistent across a backend redeploy. Attachments uploaded and downloaded successfully before a Railway redeploy (`railway up`) returned HTTP 404 on download after that redeploy, while the ticket record itself was unaffected. Cause: uploaded files are stored on the container's local disk (`uploads/`), which Railway does not preserve across redeploys. Ticket data in Postgres persists correctly. Fix for a future phase: move file storage to a Railway volume or an external object store (e.g. S3-compatible storage).
